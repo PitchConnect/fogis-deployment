@@ -125,7 +125,12 @@ def generate_env_file(config):
         'CALENDAR_SYNC_URL': 'http://fogis-calendar-phonebook-sync:5003/sync',
         'LOGO_COMBINER_URL': 'http://team-logo-combiner:5000/combine',
         'RESTART_POLICY': 'unless-stopped',
-        'SKIP_SSL_VERIFICATION': '0'
+        'SKIP_SSL_VERIFICATION': '0',
+        'FLASK_ENV': 'production',
+        'GOOGLE_TOKEN_PATH': '/app/data/google-drive-token.json',
+        'HEALTH_SERVER_PORT': '8080',
+        'HEALTH_SERVER_HOST': '0.0.0.0',
+        'PROMETHEUS_PORT': '8081'
     }
     
     # Merge configuration
