@@ -6,15 +6,15 @@ services:
     image: ghcr.io/pitchconnect/fogis-api-client:latest
     container_name: fogis-api-client-service
     environment:
-      - FOGIS_USERNAME=Bartek Svaberg
-      - FOGIS_PASSWORD=temporary
-      - FLASK_DEBUG=0
-      - LOG_LEVEL=INFO
+      - FOGIS_USERNAME=${FOGIS_USERNAME}
+      - FOGIS_PASSWORD=${FOGIS_PASSWORD}
+      - FLASK_DEBUG=${DEBUG_MODE:-0}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
     volumes:
       - ./data/fogis-api-client:/app/data
       - ./logs/fogis-api-client:/app/logs
     ports:
-      - "9086:8080"  # API endpoint
+      - "${API_CLIENT_PORT:-9086}:8080"  # API endpoint
     networks:
       - fogis-network
     restart: unless-stopped
@@ -30,19 +30,19 @@ services:
     image: ghcr.io/pitchconnect/match-list-change-detector:latest
     container_name: match-list-change-detector
     environment:
-      - FOGIS_USERNAME=Bartek Svaberg
-      - FOGIS_PASSWORD=temporary
+      - FOGIS_USERNAME=${FOGIS_USERNAME}
+      - FOGIS_PASSWORD=${FOGIS_PASSWORD}
       - FOGIS_API_CLIENT_URL=http://fogis-api-client-service:8080
       - HEALTH_SERVER_PORT=8080
       - HEALTH_SERVER_HOST=0.0.0.0
       - PROMETHEUS_PORT=8081
-      - LOG_LEVEL=INFO
-      - WEBHOOK_URL=http://match-list-processor:5000/process
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - WEBHOOK_URL=${WEBHOOK_URL:-http://match-list-processor:5000/process}
     volumes:
       - ./data/match-list-change-detector:/app/data
       - ./logs/match-list-change-detector:/app/logs
     ports:
-      - "9080:8080"  # Health check endpoint
+      - "${MATCH_DETECTOR_PORT:-9080}:8080"  # Health check endpoint
       - "9081:8081"  # Prometheus metrics
     networks:
       - fogis-network
