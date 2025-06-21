@@ -93,8 +93,9 @@ pip3 install google-auth-oauthlib requests python-dotenv
 3. **Create OAuth Credentials**
    - Go to: APIs & Services → Credentials
    - Click "Create Credentials" → "OAuth client ID"
-   - Application type: "Desktop application"
-   - Name: "FOGIS Desktop Client"
+   - Application type: "Web application"
+   - Name: "FOGIS Web Client"
+   - Authorized redirect URIs: Add `http://localhost:8080/callback`
    - Download JSON file
 
 4. **Configure OAuth Consent Screen**
