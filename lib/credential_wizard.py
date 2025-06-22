@@ -22,8 +22,14 @@ try:
     from lib.google_oauth_manager import GoogleOAuthManager
     from lib.calendar_manager import CalendarManager
     from lib.fogis_auth_manager import FogisAuthManager
-    from lib.secure_storage import SecureCredentialStore
     from lib.credential_validator import CredentialValidator
+
+    # Try to import secure storage, fallback to simple storage if needed
+    try:
+        from lib.secure_storage import SecureCredentialStore
+    except Exception:
+        from lib.simple_storage import SimpleCredentialStore as SecureCredentialStore
+
 except ImportError as e:
     print(f"❌ Error importing credential wizard modules: {e}")
     print("📦 Please ensure all required dependencies are installed:")

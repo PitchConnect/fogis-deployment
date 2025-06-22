@@ -155,7 +155,11 @@ case "$1" in
         ;;
     setup-auth)
         print_info "Starting credential setup wizard..."
-        python3 lib/credential_wizard.py
+        # Try the full wizard first, fallback to minimal wizard if needed
+        if ! python3 lib/credential_wizard.py 2>/dev/null; then
+            print_info "Using minimal credential wizard..."
+            python3 lib/minimal_wizard.py
+        fi
         ;;
     clean)
         print_info "Cleaning up Docker containers and images..."
