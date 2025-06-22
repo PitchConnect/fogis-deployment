@@ -52,6 +52,7 @@ show_usage() {
     echo "  cron-add    - Add hourly cron job"
     echo "  cron-remove - Remove cron job"
     echo "  cron-status - Show cron job status"
+    echo "  setup-auth  - Interactive credential setup wizard"
     echo "  clean       - Clean up stopped containers and images"
     echo ""
     echo "Examples:"
@@ -151,6 +152,10 @@ case "$1" in
         ;;
     cron-status)
         cron_status
+        ;;
+    setup-auth)
+        print_info "Starting credential setup wizard..."
+        python3 lib/credential_wizard.py
         ;;
     clean)
         print_info "Cleaning up Docker containers and images..."
