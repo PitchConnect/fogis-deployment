@@ -24,9 +24,11 @@ try:
     from lib.fogis_auth_manager import FogisAuthManager
     from lib.secure_storage import SecureCredentialStore
     from lib.credential_validator import CredentialValidator
-except ImportError:
-    # Fallback for development
-    pass
+except ImportError as e:
+    print(f"❌ Error importing credential wizard modules: {e}")
+    print("📦 Please ensure all required dependencies are installed:")
+    print("   pip3 install -r requirements.txt")
+    sys.exit(1)
 
 
 class CredentialWizard:
@@ -132,8 +134,29 @@ class CredentialWizard:
         
         # Initialize OAuth manager and validate credentials
         try:
-            # This will be implemented in the OAuth manager
+            self.oauth_manager = GoogleOAuthManager(credentials_file='credentials.json')
+
             self.print_info("Validating Google credentials...")
+            if not self.oauth_manager.validate_credentials_file():
+                self.print_error("Invalid credentials file format")
+                return False
+
+            self.print_info("Testing OAuth authentication...")
+            credentials = self.oauth_manager.get_credentials()
+            if not credentials:
+                self.print_error("OAuth authentication failed")
+                return False
+
+            # Test API access
+            api_results = self.oauth_manager.test_credentials()
+            failed_apis = [api for api, success in api_results.items() if not success]
+
+            if failed_apis:
+                self.print_warning(f"Some APIs failed: {', '.join(failed_apis)}")
+                retry = input("Continue anyway? (y/N): ").strip().lower()
+                if retry not in ['y', 'yes']:
+                    return False
+
             self.print_success("Google OAuth setup completed")
             return True
         except Exception as e:
@@ -169,52 +192,119 @@ class CredentialWizard:
     def _create_new_calendar(self) -> bool:
         """Create a new dedicated FOGIS calendar."""
         calendar_name = f"FOGIS Matches - {time.strftime('%Y')}"
-        
+
         print(f"\n📅 Creating calendar: {calendar_name}")
         print("🌍 Time Zone: Europe/Stockholm")
         print("📝 Description: Automated FOGIS match scheduling")
-        
+
         try:
-            # This will be implemented in the calendar manager
-            calendar_id = f"fogis-{int(time.time())}@group.calendar.google.com"
-            
+            if not self.oauth_manager or not self.oauth_manager.credentials:
+                self.print_error("Google OAuth not configured")
+                return False
+
+            # Initialize calendar manager
+            self.calendar_manager = CalendarManager(self.oauth_manager.credentials)
+
+            # Create the calendar
+            calendar_id = self.calendar_manager.create_fogis_calendar(
+                calendar_name,
+                "Automated FOGIS match scheduling - Created by credential wizard"
+            )
+
+            if not calendar_id:
+                self.print_error("Failed to create calendar")
+                return False
+
             self.print_success(f"Calendar created successfully!")
             self.print_info(f"Calendar ID: {calendar_id}")
-            
+
+            # Validate calendar access
+            validation = self.calendar_manager.validate_calendar_access(calendar_id)
+            if not validation['valid']:
+                self.print_error(f"Calendar validation failed: {validation.get('error', 'Unknown error')}")
+                return False
+
             # Ask about sharing
             share = input("\n👥 Share calendar with team members? (y/N): ").strip().lower()
             if share in ['y', 'yes']:
                 email = input("Enter team member email: ").strip()
-                if email:
-                    self.print_info(f"Calendar shared with {email}")
-            
+                if email and '@' in email:
+                    if self.calendar_manager.share_calendar(calendar_id, email, 'writer'):
+                        self.print_success(f"Calendar shared with {email}")
+                    else:
+                        self.print_warning(f"Failed to share calendar with {email}")
+
             self.config['calendar_id'] = calendar_id
             self.config['calendar_name'] = calendar_name
             return True
-            
+
         except Exception as e:
             self.print_error(f"Failed to create calendar: {e}")
             return False
 
     def _use_existing_calendar(self) -> bool:
         """Use an existing calendar."""
-        print("\n📋 Available calendars:")
-        
-        # This will list actual calendars from the API
-        print("  1. primary - Your main calendar")
-        print("  2. work@example.com - Work Calendar")
-        print("  3. Enter custom calendar ID")
-        
-        calendar_id = input("\nEnter calendar ID or selection: ").strip()
-        
-        if calendar_id:
+        try:
+            if not self.oauth_manager or not self.oauth_manager.credentials:
+                self.print_error("Google OAuth not configured")
+                return False
+
+            # Initialize calendar manager if not already done
+            if not self.calendar_manager:
+                self.calendar_manager = CalendarManager(self.oauth_manager.credentials)
+
+            print("\n📋 Available calendars:")
+            calendars = self.calendar_manager.list_calendars()
+
+            if not calendars:
+                self.print_error("No calendars found")
+                return False
+
+            # Display calendars with numbers
+            for i, calendar in enumerate(calendars[:10], 1):  # Limit to first 10
+                access_info = f"({calendar['access_role']})" if calendar['access_role'] != 'owner' else ""
+                primary_info = " (Primary)" if calendar.get('primary') else ""
+                print(f"  {i}. {calendar['summary']}{primary_info} {access_info}")
+
+            print(f"  {len(calendars[:10]) + 1}. Enter custom calendar ID")
+
+            while True:
+                choice = input(f"\nSelect calendar (1-{len(calendars[:10]) + 1}): ").strip()
+
+                try:
+                    choice_num = int(choice)
+                    if 1 <= choice_num <= len(calendars[:10]):
+                        # Selected from list
+                        selected_calendar = calendars[choice_num - 1]
+                        calendar_id = selected_calendar['id']
+                        break
+                    elif choice_num == len(calendars[:10]) + 1:
+                        # Custom calendar ID
+                        calendar_id = input("Enter calendar ID: ").strip()
+                        if calendar_id:
+                            break
+                        else:
+                            print("Please enter a valid calendar ID")
+                    else:
+                        print(f"Please enter a number between 1 and {len(calendars[:10]) + 1}")
+                except ValueError:
+                    print("Please enter a valid number")
+
             # Validate calendar access
             self.print_info("Validating calendar access...")
-            self.config['calendar_id'] = calendar_id
-            self.print_success("Calendar access confirmed")
-            return True
-        else:
-            self.print_error("No calendar selected")
+            validation = self.calendar_manager.validate_calendar_access(calendar_id)
+
+            if validation['valid']:
+                self.config['calendar_id'] = calendar_id
+                self.config['calendar_name'] = validation['calendar_info'].get('summary', 'Selected Calendar')
+                self.print_success("Calendar access confirmed")
+                return True
+            else:
+                self.print_error(f"Calendar validation failed: {validation.get('error', 'Unknown error')}")
+                return False
+
+        except Exception as e:
+            self.print_error(f"Error selecting calendar: {e}")
             return False
 
     def setup_fogis_auth(self) -> bool:
@@ -242,17 +332,55 @@ class CredentialWizard:
         
         # Test FOGIS login
         self.print_info("Testing FOGIS authentication...")
-        
+
         try:
-            # This will be implemented in the FOGIS auth manager
-            self.print_success("FOGIS authentication successful")
-            self.print_info(f"Referee ID detected: {referee_number}")
-            
-            self.config['fogis_username'] = username
-            self.config['fogis_password'] = password
-            self.config['referee_number'] = referee_number
-            return True
-            
+            # Initialize FOGIS auth manager
+            self.fogis_manager = FogisAuthManager()
+
+            # Test connection first
+            if not self.fogis_manager.test_connection():
+                self.print_error("Cannot connect to FOGIS website. Please check your internet connection.")
+                return False
+
+            # Test authentication
+            auth_result = self.fogis_manager.authenticate(username, password)
+
+            if auth_result['success']:
+                self.print_success("FOGIS authentication successful")
+
+                # Extract referee information
+                referee_info = auth_result.get('referee_info', {})
+                detected_referee_number = referee_info.get('referee_number')
+
+                if detected_referee_number:
+                    self.print_info(f"Auto-detected referee ID: {detected_referee_number}")
+                    if detected_referee_number != referee_number:
+                        self.print_warning(f"Entered referee number ({referee_number}) differs from detected ({detected_referee_number})")
+                        use_detected = input("Use auto-detected referee number? (Y/n): ").strip().lower()
+                        if use_detected not in ['n', 'no']:
+                            referee_number = detected_referee_number
+                else:
+                    self.print_info(f"Using provided referee ID: {referee_number}")
+
+                # Display additional referee info if available
+                if referee_info.get('name'):
+                    self.print_info(f"Referee name: {referee_info['name']}")
+
+                self.config['fogis_username'] = username
+                self.config['fogis_password'] = password
+                self.config['referee_number'] = referee_number
+                self.config['referee_info'] = referee_info
+                return True
+            else:
+                error_msg = auth_result.get('error', 'Authentication failed')
+                self.print_error(f"FOGIS authentication failed: {error_msg}")
+
+                # Offer retry
+                retry = input("Retry with different credentials? (y/N): ").strip().lower()
+                if retry in ['y', 'yes']:
+                    return self.setup_fogis_auth()
+                return False
+
         except Exception as e:
             self.print_error(f"FOGIS authentication failed: {e}")
             return False
@@ -287,35 +415,121 @@ class CredentialWizard:
 
     def _test_google_oauth(self) -> bool:
         """Test Google OAuth functionality."""
-        # Implementation will test actual OAuth flow
-        return True
+        try:
+            if not self.oauth_manager or not self.oauth_manager.credentials:
+                return False
+
+            # Test API access
+            api_results = self.oauth_manager.test_credentials()
+            required_apis = ['calendar', 'drive', 'contacts']
+
+            for api in required_apis:
+                if not api_results.get(api, False):
+                    self.print_error(f"Google {api.title()} API test failed")
+                    return False
+
+            return True
+        except Exception:
+            return False
 
     def _test_calendar_access(self) -> bool:
         """Test calendar access and permissions."""
-        # Implementation will test calendar operations
-        return True
+        try:
+            if not self.calendar_manager or 'calendar_id' not in self.config:
+                return False
+
+            # Validate calendar access
+            validation = self.calendar_manager.validate_calendar_access(self.config['calendar_id'])
+            return validation.get('valid', False)
+        except Exception:
+            return False
 
     def _test_fogis_auth(self) -> bool:
         """Test FOGIS authentication."""
-        # Implementation will test FOGIS login
-        return True
+        try:
+            if not self.fogis_manager:
+                return False
+
+            # Test session validity
+            return self.fogis_manager.validate_session()
+        except Exception:
+            return False
 
     def _test_credential_storage(self) -> bool:
         """Test credential storage and encryption."""
-        # Implementation will test secure storage
-        return True
+        try:
+            # Initialize storage if not already done
+            if not self.storage:
+                self.storage = SecureCredentialStore()
+
+            # Test storage functionality with dummy data
+            test_data = {'test': 'data', 'timestamp': time.time()}
+
+            # Test store and retrieve
+            if not self.storage.store_credentials('test_service', test_data):
+                return False
+
+            retrieved = self.storage.retrieve_credentials('test_service')
+            if retrieved != test_data:
+                return False
+
+            # Clean up test data
+            self.storage.delete_credentials('test_service')
+            return True
+        except Exception:
+            return False
 
     def save_configuration(self) -> bool:
         """Save all configuration securely."""
         self.print_step(5, "Saving Configuration")
-        
+
         print("💾 Saving credentials securely...")
-        
+
         try:
-            # This will be implemented with actual encryption
-            self.print_success("Credentials saved and encrypted")
+            # Initialize storage if not already done
+            if not self.storage:
+                self.storage = SecureCredentialStore()
+
+            # Save Google OAuth credentials
+            if self.oauth_manager and self.oauth_manager.credentials:
+                oauth_data = {
+                    'token_info': self.oauth_manager.get_token_info(),
+                    'credentials_file': 'credentials.json'
+                }
+                self.storage.store_credentials('google_oauth', oauth_data)
+                self.print_info("Google OAuth credentials saved")
+
+            # Save calendar configuration
+            if 'calendar_id' in self.config:
+                calendar_data = {
+                    'calendar_id': self.config['calendar_id'],
+                    'calendar_name': self.config.get('calendar_name', ''),
+                    'configured_at': time.strftime('%Y-%m-%d %H:%M:%S')
+                }
+                self.storage.store_credentials('calendar_config', calendar_data)
+                self.print_info("Calendar configuration saved")
+
+            # Save FOGIS credentials
+            if 'fogis_username' in self.config:
+                fogis_data = {
+                    'username': self.config['fogis_username'],
+                    'password': self.config['fogis_password'],
+                    'referee_number': self.config['referee_number'],
+                    'referee_info': self.config.get('referee_info', {})
+                }
+                self.storage.store_credentials('fogis_auth', fogis_data)
+                self.print_info("FOGIS credentials saved")
+
+            # Update .env file for Docker services
+            self._update_env_file()
+
+            # Copy credentials to service directories
+            self._setup_service_credentials()
+
+            self.print_success("All credentials saved and encrypted")
             self.print_success("Configuration files updated")
             return True
+
         except Exception as e:
             self.print_error(f"Failed to save configuration: {e}")
             return False
@@ -345,6 +559,71 @@ class CredentialWizard:
         print("   • Upload assets to Google Drive")
         
         print("\n🎯 Your FOGIS system is ready to use!")
+
+    def _update_env_file(self) -> None:
+        """Update .env file with new configuration."""
+        try:
+            env_content = []
+
+            # Read existing .env file if it exists
+            if os.path.exists('.env'):
+                with open('.env', 'r') as f:
+                    env_content = f.readlines()
+
+            # Update or add FOGIS credentials
+            if 'fogis_username' in self.config:
+                self._update_env_var(env_content, 'FOGIS_USERNAME', self.config['fogis_username'])
+                self._update_env_var(env_content, 'FOGIS_PASSWORD', self.config['fogis_password'])
+                self._update_env_var(env_content, 'USER_REFEREE_NUMBER', self.config['referee_number'])
+
+            # Update calendar configuration
+            if 'calendar_id' in self.config:
+                self._update_env_var(env_content, 'GOOGLE_CALENDAR_ID', self.config['calendar_id'])
+
+            # Write updated .env file
+            with open('.env', 'w') as f:
+                f.writelines(env_content)
+
+            # Set secure permissions
+            os.chmod('.env', 0o600)
+
+        except Exception as e:
+            self.print_warning(f"Could not update .env file: {e}")
+
+    def _update_env_var(self, env_content: list, var_name: str, var_value: str) -> None:
+        """Update or add an environment variable in the content list."""
+        var_line = f"{var_name}={var_value}\n"
+
+        # Find existing variable
+        for i, line in enumerate(env_content):
+            if line.startswith(f"{var_name}="):
+                env_content[i] = var_line
+                return
+
+        # Add new variable
+        env_content.append(var_line)
+
+    def _setup_service_credentials(self) -> None:
+        """Set up credentials for Docker services."""
+        try:
+            # Create data directories
+            os.makedirs('data/fogis-calendar-phonebook-sync', exist_ok=True)
+            os.makedirs('data/google-drive-service', exist_ok=True)
+
+            # Copy token.json to service directories if it exists
+            if os.path.exists('token.json'):
+                import shutil
+
+                # Copy to calendar service
+                shutil.copy('token.json', 'data/fogis-calendar-phonebook-sync/token.json')
+
+                # Copy to drive service (different filename)
+                shutil.copy('token.json', 'data/google-drive-service/google-drive-token.json')
+
+                self.print_info("Service credentials configured")
+
+        except Exception as e:
+            self.print_warning(f"Could not set up service credentials: {e}")
 
     def run(self) -> int:
         """Run the complete credential setup wizard."""
