@@ -1,42 +1,42 @@
 #!/usr/bin/env python3
 """
-FOGIS Multi-Platform Installation System - Platform Manager
+FOGIS Multi-Platform Installation System
 
 This module provides comprehensive platform detection and package management
-abstraction for installing FOGIS across multiple operating systems and distributions.
+capabilities for the FOGIS deployment system across multiple operating systems.
 
-Supported Platforms:
-- Ubuntu/Debian (apt)
-- CentOS/RHEL/Fedora (yum/dnf)
-- Arch Linux (pacman)
-- Alpine Linux (apk)
-- openSUSE (zypper)
-- macOS (homebrew)
-- WSL2 (Windows Subsystem for Linux)
+Features:
+- Automatic platform detection (Linux, macOS, Windows/WSL2)
+- Multi-package manager support (apt, yum/dnf, pacman, brew, apk, zypper)
+- Cross-platform package name resolution
+- Prerequisite verification and installation
+- Comprehensive error handling and logging
 
 Author: The Augster
 License: MIT
 """
 
 import logging
-import os
 import platform
 import subprocess
+import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Union
 
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class PlatformInfo:
-    """Structured platform information container."""
-    
+    """Container for platform information."""
     os_name: str
     distribution: str
     version: str
@@ -44,404 +44,295 @@ class PlatformInfo:
     package_manager: str
     is_wsl2: bool = False
     kernel_version: Optional[str] = None
-    
+
     def __str__(self) -> str:
-        """Human-readable platform description."""
-        wsl_indicator = " (WSL2)" if self.is_wsl2 else ""
-        return f"{self.distribution} {self.version} ({self.architecture}){wsl_indicator}"
+        """String representation of platform info."""
+        base = f"{self.distribution} {self.version} ({self.architecture})"
+        if self.is_wsl2:
+            base += " [WSL2]"
+        return base
 
 
 class PackageManager(ABC):
-    """Abstract base class for package manager implementations."""
-    
-    def __init__(self, name: str):
-        self.name = name
-        self.logger = logging.getLogger(f"{__name__}.{name}")
-    
+    """Abstract base class for package managers."""
+
+    def __init__(self):
+        self.name = self.__class__.__name__.replace('PackageManager', '').lower()
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
     @abstractmethod
     def update_package_list(self) -> bool:
-        """Update the package manager's package list."""
+        """Update package repository lists."""
         pass
-    
+
     @abstractmethod
-    def install_package(self, package_name: str) -> bool:
+    def install_package(self, package: str) -> bool:
         """Install a single package."""
         pass
-    
+
     @abstractmethod
-    def is_package_installed(self, package_name: str) -> bool:
+    def is_package_installed(self, package: str) -> bool:
         """Check if a package is installed."""
         pass
-    
+
     @abstractmethod
-    def get_install_command(self, package_name: str) -> List[str]:
+    def get_install_command(self, package: str) -> List[str]:
         """Get the command to install a package."""
         pass
-    
-    def install_packages(self, package_names: List[str]) -> bool:
-        """Install multiple packages."""
-        success = True
-        for package in package_names:
-            if not self.install_package(package):
-                success = False
-        return success
-    
-    def verify_prerequisites(self, packages: List[str]) -> Tuple[List[str], List[str]]:
-        """Verify which packages are installed and which are missing."""
-        installed = []
-        missing = []
-        
-        for package in packages:
-            if self.is_package_installed(package):
-                installed.append(package)
-            else:
-                missing.append(package)
-        
-        return installed, missing
+
+    def verify_prerequisites(self, packages: List[str]) -> Dict[str, bool]:
+        """Verify if multiple packages are installed."""
+        return {pkg: self.is_package_installed(pkg) for pkg in packages}
+
+    def _run_command(self, command: List[str], check: bool = True) -> subprocess.CompletedProcess:
+        """Run a command and return the result."""
+        try:
+            self.logger.debug(f"Running command: {' '.join(command)}")
+            result = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                check=check
+            )
+            return result
+        except subprocess.CalledProcessError as e:
+            self.logger.error(f"Command failed: {' '.join(command)}")
+            self.logger.error(f"Error: {e}")
+            raise
 
 
 class AptPackageManager(PackageManager):
-    """Package manager for Ubuntu/Debian systems using apt."""
-    
+    """Package manager for Ubuntu/Debian systems using APT."""
+
     def __init__(self):
-        super().__init__("apt")
-    
+        super().__init__()
+        self.name = "apt"
+
     def update_package_list(self) -> bool:
-        """Update apt package list."""
+        """Update APT package lists."""
         try:
-            result = subprocess.run(
-                ["sudo", "apt", "update"],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            self.logger.info("Package list updated successfully")
+            self._run_command(["sudo", "apt", "update"])
             return True
-        except subprocess.CalledProcessError as e:
-            self.logger.error(f"Failed to update package list: {e}")
-            return False
-    
-    def install_package(self, package_name: str) -> bool:
-        """Install package using apt."""
-        try:
-            result = subprocess.run(
-                ["sudo", "apt", "install", "-y", package_name],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            self.logger.info(f"Successfully installed {package_name}")
-            return True
-        except subprocess.CalledProcessError as e:
-            self.logger.error(f"Failed to install {package_name}: {e}")
-            return False
-    
-    def is_package_installed(self, package_name: str) -> bool:
-        """Check if package is installed using dpkg."""
-        try:
-            result = subprocess.run(
-                ["dpkg", "-l", package_name],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            return "ii" in result.stdout
         except subprocess.CalledProcessError:
             return False
-    
-    def get_install_command(self, package_name: str) -> List[str]:
-        """Get apt install command."""
-        return ["sudo", "apt", "install", "-y", package_name]
+
+    def install_package(self, package: str) -> bool:
+        """Install a package using APT."""
+        try:
+            self._run_command(["sudo", "apt", "install", "-y", package])
+            return True
+        except subprocess.CalledProcessError:
+            return False
+
+    def is_package_installed(self, package: str) -> bool:
+        """Check if a package is installed using dpkg."""
+        try:
+            result = self._run_command(["dpkg", "-l", package], check=False)
+            return result.returncode == 0
+        except Exception:
+            return False
+
+    def get_install_command(self, package: str) -> List[str]:
+        """Get APT install command."""
+        return ["sudo", "apt", "install", "-y", package]
 
 
 class YumPackageManager(PackageManager):
-    """Package manager for CentOS/RHEL/Fedora systems using yum/dnf."""
-    
+    """Package manager for CentOS/RHEL/Fedora systems using YUM/DNF."""
+
     def __init__(self):
-        super().__init__("yum/dnf")
-        # Auto-detect yum vs dnf
-        self.cmd = "dnf" if self._has_dnf() else "yum"
-    
-    def _has_dnf(self) -> bool:
-        """Check if dnf is available."""
+        super().__init__()
+        self.name = "yum/dnf"
+        # Prefer DNF over YUM if available
         try:
-            subprocess.run(["which", "dnf"], capture_output=True, check=True)
-            return True
+            subprocess.run(["which", "dnf"], check=True, capture_output=True)
+            self.cmd = "dnf"
         except subprocess.CalledProcessError:
-            return False
-    
+            self.cmd = "yum"
+
     def update_package_list(self) -> bool:
-        """Update package list."""
+        """Update YUM/DNF package lists."""
         try:
-            subprocess.run(
-                ["sudo", self.cmd, "check-update"],
-                capture_output=True,
-                text=True
-            )
-            self.logger.info("Package list updated successfully")
+            self._run_command(["sudo", self.cmd, "check-update"])
             return True
         except subprocess.CalledProcessError:
-            # check-update returns non-zero when updates are available
+            # check-update returns 100 if updates are available, which is normal
             return True
-    
-    def install_package(self, package_name: str) -> bool:
-        """Install package using yum/dnf."""
+
+    def install_package(self, package: str) -> bool:
+        """Install a package using YUM/DNF."""
         try:
-            result = subprocess.run(
-                ["sudo", self.cmd, "install", "-y", package_name],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            self.logger.info(f"Successfully installed {package_name}")
-            return True
-        except subprocess.CalledProcessError as e:
-            self.logger.error(f"Failed to install {package_name}: {e}")
-            return False
-    
-    def is_package_installed(self, package_name: str) -> bool:
-        """Check if package is installed using rpm."""
-        try:
-            result = subprocess.run(
-                ["rpm", "-q", package_name],
-                capture_output=True,
-                text=True,
-                check=True
-            )
+            self._run_command(["sudo", self.cmd, "install", "-y", package])
             return True
         except subprocess.CalledProcessError:
             return False
-    
-    def get_install_command(self, package_name: str) -> List[str]:
-        """Get yum/dnf install command."""
-        return ["sudo", self.cmd, "install", "-y", package_name]
+
+    def is_package_installed(self, package: str) -> bool:
+        """Check if a package is installed using rpm."""
+        try:
+            result = self._run_command(["rpm", "-q", package], check=False)
+            return result.returncode == 0
+        except Exception:
+            return False
+
+    def get_install_command(self, package: str) -> List[str]:
+        """Get YUM/DNF install command."""
+        return ["sudo", self.cmd, "install", "-y", package]
 
 
 class PacmanPackageManager(PackageManager):
-    """Package manager for Arch Linux systems using pacman."""
-    
+    """Package manager for Arch Linux systems using Pacman."""
+
     def __init__(self):
-        super().__init__("pacman")
-    
+        super().__init__()
+        self.name = "pacman"
+
     def update_package_list(self) -> bool:
-        """Update pacman package list."""
+        """Update Pacman package lists."""
         try:
-            result = subprocess.run(
-                ["sudo", "pacman", "-Sy"],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            self.logger.info("Package list updated successfully")
-            return True
-        except subprocess.CalledProcessError as e:
-            self.logger.error(f"Failed to update package list: {e}")
-            return False
-    
-    def install_package(self, package_name: str) -> bool:
-        """Install package using pacman."""
-        try:
-            result = subprocess.run(
-                ["sudo", "pacman", "-S", "--noconfirm", package_name],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            self.logger.info(f"Successfully installed {package_name}")
-            return True
-        except subprocess.CalledProcessError as e:
-            self.logger.error(f"Failed to install {package_name}: {e}")
-            return False
-    
-    def is_package_installed(self, package_name: str) -> bool:
-        """Check if package is installed using pacman."""
-        try:
-            result = subprocess.run(
-                ["pacman", "-Q", package_name],
-                capture_output=True,
-                text=True,
-                check=True
-            )
+            self._run_command(["sudo", "pacman", "-Sy"])
             return True
         except subprocess.CalledProcessError:
             return False
-    
-    def get_install_command(self, package_name: str) -> List[str]:
-        """Get pacman install command."""
-        return ["sudo", "pacman", "-S", "--noconfirm", package_name]
+
+    def install_package(self, package: str) -> bool:
+        """Install a package using Pacman."""
+        try:
+            self._run_command(["sudo", "pacman", "-S", "--noconfirm", package])
+            return True
+        except subprocess.CalledProcessError:
+            return False
+
+    def is_package_installed(self, package: str) -> bool:
+        """Check if a package is installed using pacman."""
+        try:
+            result = self._run_command(["pacman", "-Q", package], check=False)
+            return result.returncode == 0
+        except Exception:
+            return False
+
+    def get_install_command(self, package: str) -> List[str]:
+        """Get Pacman install command."""
+        return ["sudo", "pacman", "-S", "--noconfirm", package]
 
 
 class BrewPackageManager(PackageManager):
     """Package manager for macOS systems using Homebrew."""
-    
+
     def __init__(self):
-        super().__init__("brew")
-    
+        super().__init__()
+        self.name = "brew"
+
     def update_package_list(self) -> bool:
-        """Update Homebrew package list."""
+        """Update Homebrew package lists."""
         try:
-            result = subprocess.run(
-                ["brew", "update"],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            self.logger.info("Package list updated successfully")
-            return True
-        except subprocess.CalledProcessError as e:
-            self.logger.error(f"Failed to update package list: {e}")
-            return False
-    
-    def install_package(self, package_name: str) -> bool:
-        """Install package using brew."""
-        try:
-            result = subprocess.run(
-                ["brew", "install", package_name],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            self.logger.info(f"Successfully installed {package_name}")
-            return True
-        except subprocess.CalledProcessError as e:
-            self.logger.error(f"Failed to install {package_name}: {e}")
-            return False
-    
-    def is_package_installed(self, package_name: str) -> bool:
-        """Check if package is installed using brew."""
-        try:
-            result = subprocess.run(
-                ["brew", "list", package_name],
-                capture_output=True,
-                text=True,
-                check=True
-            )
+            self._run_command(["brew", "update"])
             return True
         except subprocess.CalledProcessError:
             return False
-    
-    def get_install_command(self, package_name: str) -> List[str]:
-        """Get brew install command."""
-        return ["brew", "install", package_name]
+
+    def install_package(self, package: str) -> bool:
+        """Install a package using Homebrew."""
+        try:
+            self._run_command(["brew", "install", package])
+            return True
+        except subprocess.CalledProcessError:
+            return False
+
+    def is_package_installed(self, package: str) -> bool:
+        """Check if a package is installed using brew."""
+        try:
+            result = self._run_command(["brew", "list", package], check=False)
+            return result.returncode == 0
+        except Exception:
+            return False
+
+    def get_install_command(self, package: str) -> List[str]:
+        """Get Homebrew install command."""
+        return ["brew", "install", package]
 
 
 class ApkPackageManager(PackageManager):
-    """Package manager for Alpine Linux systems using apk."""
+    """Package manager for Alpine Linux systems using APK."""
 
     def __init__(self):
-        super().__init__("apk")
+        super().__init__()
+        self.name = "apk"
 
     def update_package_list(self) -> bool:
-        """Update apk package list."""
+        """Update APK package lists."""
         try:
-            result = subprocess.run(
-                ["sudo", "apk", "update"],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            self.logger.info("Package list updated successfully")
-            return True
-        except subprocess.CalledProcessError as e:
-            self.logger.error(f"Failed to update package list: {e}")
-            return False
-
-    def install_package(self, package_name: str) -> bool:
-        """Install package using apk."""
-        try:
-            result = subprocess.run(
-                ["sudo", "apk", "add", package_name],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            self.logger.info(f"Successfully installed {package_name}")
-            return True
-        except subprocess.CalledProcessError as e:
-            self.logger.error(f"Failed to install {package_name}: {e}")
-            return False
-
-    def is_package_installed(self, package_name: str) -> bool:
-        """Check if package is installed using apk."""
-        try:
-            result = subprocess.run(
-                ["apk", "info", "-e", package_name],
-                capture_output=True,
-                text=True,
-                check=True
-            )
+            self._run_command(["sudo", "apk", "update"])
             return True
         except subprocess.CalledProcessError:
             return False
 
-    def get_install_command(self, package_name: str) -> List[str]:
-        """Get apk install command."""
-        return ["sudo", "apk", "add", package_name]
+    def install_package(self, package: str) -> bool:
+        """Install a package using APK."""
+        try:
+            self._run_command(["sudo", "apk", "add", package])
+            return True
+        except subprocess.CalledProcessError:
+            return False
+
+    def is_package_installed(self, package: str) -> bool:
+        """Check if a package is installed using apk."""
+        try:
+            result = self._run_command(["apk", "info", "-e", package], check=False)
+            return result.returncode == 0
+        except Exception:
+            return False
+
+    def get_install_command(self, package: str) -> List[str]:
+        """Get APK install command."""
+        return ["sudo", "apk", "add", package]
 
 
 class ZypperPackageManager(PackageManager):
-    """Package manager for openSUSE systems using zypper."""
+    """Package manager for openSUSE systems using Zypper."""
 
     def __init__(self):
-        super().__init__("zypper")
+        super().__init__()
+        self.name = "zypper"
 
     def update_package_list(self) -> bool:
-        """Update zypper package list."""
+        """Update Zypper package lists."""
         try:
-            result = subprocess.run(
-                ["sudo", "zypper", "refresh"],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            self.logger.info("Package list updated successfully")
+            self._run_command(["sudo", "zypper", "refresh"])
             return True
-        except subprocess.CalledProcessError as e:
-            self.logger.error(f"Failed to update package list: {e}")
-            return False
-
-    def install_package(self, package_name: str) -> bool:
-        """Install package using zypper."""
-        try:
-            result = subprocess.run(
-                ["sudo", "zypper", "install", "-y", package_name],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            self.logger.info(f"Successfully installed {package_name}")
-            return True
-        except subprocess.CalledProcessError as e:
-            self.logger.error(f"Failed to install {package_name}: {e}")
-            return False
-
-    def is_package_installed(self, package_name: str) -> bool:
-        """Check if package is installed using zypper."""
-        try:
-            result = subprocess.run(
-                ["zypper", "search", "-i", package_name],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            return package_name in result.stdout
         except subprocess.CalledProcessError:
             return False
 
-    def get_install_command(self, package_name: str) -> List[str]:
-        """Get zypper install command."""
-        return ["sudo", "zypper", "install", "-y", package_name]
+    def install_package(self, package: str) -> bool:
+        """Install a package using Zypper."""
+        try:
+            self._run_command(["sudo", "zypper", "install", "-y", package])
+            return True
+        except subprocess.CalledProcessError:
+            return False
+
+    def is_package_installed(self, package: str) -> bool:
+        """Check if a package is installed using zypper."""
+        try:
+            result = self._run_command(["zypper", "search", "-i", package], check=False)
+            return result.returncode == 0 and package in result.stdout
+        except Exception:
+            return False
+
+    def get_install_command(self, package: str) -> List[str]:
+        """Get Zypper install command."""
+        return ["sudo", "zypper", "install", "-y", package]
 
 
 class MultiPlatformManager:
     """Main orchestration class for multi-platform installation management."""
 
     def __init__(self):
-        self.logger = logging.getLogger(__name__)
         self.platform_info: Optional[PlatformInfo] = None
         self.package_manager: Optional[PackageManager] = None
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
-        # Cross-platform package mappings
+        # Package name mappings for different package managers
         self.package_mappings = {
             'git': {
                 'apt': 'git',
@@ -473,31 +364,60 @@ class MultiPlatformManager:
         }
 
     def detect_platform(self) -> PlatformInfo:
-        """Detect the current platform and return structured information."""
-        if self.platform_info is not None:
-            return self.platform_info
-
+        """Detect the current platform and return platform information."""
         os_name = platform.system().lower()
         architecture = platform.machine()
-        kernel_version = platform.release()
-
-        # Detect WSL2
-        is_wsl2 = self._detect_wsl2()
 
         if os_name == "linux":
-            distribution, version = self._detect_linux_distribution()
-            package_manager = self._detect_package_manager()
+            return self._detect_linux_platform(architecture)
         elif os_name == "darwin":
-            distribution = "macOS"
-            version = platform.mac_ver()[0]
-            package_manager = "brew"
+            return self._detect_macos_platform(architecture)
+        elif os_name == "windows":
+            return self._detect_windows_platform(architecture)
         else:
-            distribution = "Unknown"
-            version = "Unknown"
-            package_manager = "unknown"
+            raise RuntimeError(f"Unsupported operating system: {os_name}")
+
+    def _detect_linux_platform(self, architecture: str) -> PlatformInfo:
+        """Detect Linux distribution and package manager."""
+        distribution = "Unknown"
+        version = "Unknown"
+        package_manager = "unknown"
+        kernel_version = platform.release()
+        is_wsl2 = self._detect_wsl2()
+
+        # Try to read /etc/os-release
+        try:
+            with open('/etc/os-release', 'r') as f:
+                os_release = f.read()
+
+            for line in os_release.split('\n'):
+                if line.startswith('NAME='):
+                    distribution = line.split('=')[1].strip('"')
+                elif line.startswith('VERSION_ID='):
+                    version = line.split('=')[1].strip('"')
+
+        except FileNotFoundError:
+            self.logger.warning("Could not read /etc/os-release")
+
+        # Determine package manager based on distribution
+        if 'ubuntu' in distribution.lower() or 'debian' in distribution.lower():
+            package_manager = "apt"
+        elif 'centos' in distribution.lower() or 'rhel' in distribution.lower() or 'red hat' in distribution.lower():
+            package_manager = "yum"
+        elif 'fedora' in distribution.lower():
+            package_manager = "dnf"
+        elif 'arch' in distribution.lower():
+            package_manager = "pacman"
+        elif 'alpine' in distribution.lower():
+            package_manager = "apk"
+        elif 'opensuse' in distribution.lower() or 'suse' in distribution.lower():
+            package_manager = "zypper"
+        else:
+            # Try to detect package manager by checking for commands
+            package_manager = self._detect_package_manager()
 
         self.platform_info = PlatformInfo(
-            os_name=os_name,
+            os_name="linux",
             distribution=distribution,
             version=version,
             architecture=architecture,
@@ -508,178 +428,177 @@ class MultiPlatformManager:
 
         return self.platform_info
 
+    def _detect_macos_platform(self, architecture: str) -> PlatformInfo:
+        """Detect macOS version and set up Homebrew."""
+        version = platform.mac_ver()[0]
+        kernel_version = platform.release()
+
+        self.platform_info = PlatformInfo(
+            os_name="darwin",
+            distribution="macOS",
+            version=version,
+            architecture=architecture,
+            package_manager="brew",
+            kernel_version=kernel_version
+        )
+
+        return self.platform_info
+
+    def _detect_windows_platform(self, architecture: str) -> PlatformInfo:
+        """Detect Windows platform (likely WSL2)."""
+        version = platform.version()
+
+        self.platform_info = PlatformInfo(
+            os_name="windows",
+            distribution="Windows",
+            version=version,
+            architecture=architecture,
+            package_manager="unknown",
+            is_wsl2=True
+        )
+
+        return self.platform_info
+
     def _detect_wsl2(self) -> bool:
-        """Detect if running under WSL2."""
+        """Detect if running in WSL2 environment."""
         try:
-            with open('/proc/version', 'r') as f:
-                version_info = f.read().lower()
-                return 'microsoft' in version_info and 'wsl2' in version_info
-        except (FileNotFoundError, PermissionError):
-            return False
-
-    def _detect_linux_distribution(self) -> Tuple[str, str]:
-        """Detect Linux distribution and version."""
-        # Try /etc/os-release first (most modern distributions)
-        if Path('/etc/os-release').exists():
-            return self._parse_os_release()
-
-        # Fallback methods for older systems
-        if Path('/etc/arch-release').exists():
-            return "Arch Linux", "rolling"
-        elif Path('/etc/alpine-release').exists():
-            with open('/etc/alpine-release', 'r') as f:
-                version = f.read().strip()
-            return "Alpine Linux", version
-
-        # Final fallback
-        return "Unknown Linux", "Unknown"
-
-    def _parse_os_release(self) -> Tuple[str, str]:
-        """Parse /etc/os-release file."""
-        distribution = "Unknown"
-        version = "Unknown"
-
-        try:
-            with open('/etc/os-release', 'r') as f:
-                for line in f:
-                    if line.startswith('NAME='):
-                        distribution = line.split('=')[1].strip().strip('"')
-                    elif line.startswith('VERSION_ID='):
-                        version = line.split('=')[1].strip().strip('"')
-        except (FileNotFoundError, PermissionError):
+            proc_version_path = Path('/proc/version')
+            if proc_version_path.exists():
+                with open(proc_version_path, 'r') as f:
+                    content = f.read().lower()
+                    return 'microsoft' in content and 'wsl2' in content
+        except Exception:
             pass
-
-        return distribution, version
+        return False
 
     def _detect_package_manager(self) -> str:
-        """Detect the available package manager."""
-        # Check for package managers in order of preference
+        """Detect package manager by checking for available commands."""
         managers = [
-            ("apt", ["apt", "--version"]),
-            ("dnf", ["dnf", "--version"]),
-            ("yum", ["yum", "--version"]),
-            ("pacman", ["pacman", "--version"]),
-            ("apk", ["apk", "--version"]),
-            ("zypper", ["zypper", "--version"]),
-            ("brew", ["brew", "--version"])
+            ("apt", "apt"),
+            ("dnf", "dnf"),
+            ("yum", "yum"),
+            ("pacman", "pacman"),
+            ("brew", "brew"),
+            ("apk", "apk"),
+            ("zypper", "zypper")
         ]
 
-        for manager_name, check_cmd in managers:
+        for name, command in managers:
             try:
-                subprocess.run(check_cmd, capture_output=True, check=True)
-                return manager_name
-            except (subprocess.CalledProcessError, FileNotFoundError):
+                subprocess.run(["which", command], check=True, capture_output=True)
+                return name
+            except subprocess.CalledProcessError:
                 continue
 
         return "unknown"
 
     def get_package_manager(self) -> PackageManager:
-        """Get the appropriate package manager instance."""
-        if self.package_manager is not None:
+        """Get the appropriate package manager for the current platform."""
+        if not self.platform_info:
+            self.detect_platform()
+
+        if self.package_manager:
             return self.package_manager
 
-        platform_info = self.detect_platform()
+        pm_name = self.platform_info.package_manager
 
-        manager_map = {
-            'apt': AptPackageManager,
-            'yum': YumPackageManager,
-            'dnf': YumPackageManager,
-            'pacman': PacmanPackageManager,
-            'brew': BrewPackageManager,
-            'apk': ApkPackageManager,
-            'zypper': ZypperPackageManager
-        }
+        if pm_name == "apt":
+            self.package_manager = AptPackageManager()
+        elif pm_name in ["yum", "dnf"]:
+            self.package_manager = YumPackageManager()
+        elif pm_name == "pacman":
+            self.package_manager = PacmanPackageManager()
+        elif pm_name == "brew":
+            self.package_manager = BrewPackageManager()
+        elif pm_name == "apk":
+            self.package_manager = ApkPackageManager()
+        elif pm_name == "zypper":
+            self.package_manager = ZypperPackageManager()
+        else:
+            raise RuntimeError(f"Unsupported package manager: {pm_name}")
 
-        manager_class = manager_map.get(platform_info.package_manager)
-        if manager_class is None:
-            raise RuntimeError(f"Unsupported package manager: {platform_info.package_manager}")
-
-        self.package_manager = manager_class()
         return self.package_manager
 
-    def resolve_package_name(self, generic_name: str) -> str:
-        """Resolve a generic package name to platform-specific name."""
-        platform_info = self.detect_platform()
+    def resolve_package_name(self, package: str) -> str:
+        """Resolve package name for the current platform."""
+        if not self.platform_info:
+            self.detect_platform()
 
-        if generic_name not in self.package_mappings:
-            return generic_name
+        pm_name = self.platform_info.package_manager
 
-        mapping = self.package_mappings[generic_name]
-        return mapping.get(platform_info.package_manager, generic_name)
+        if package in self.package_mappings:
+            mapping = self.package_mappings[package]
+            if pm_name in mapping:
+                return mapping[pm_name]
 
-    def verify_prerequisites(self, packages: List[str] = None) -> Dict[str, bool]:
-        """Verify that required packages are installed."""
+        # Return original package name if no mapping found
+        return package
+
+    def verify_prerequisites(self, packages: Optional[List[str]] = None) -> Dict[str, bool]:
+        """Verify if prerequisites are installed."""
         if packages is None:
             packages = ['git', 'docker', 'python3']
 
         package_manager = self.get_package_manager()
-        results = {}
+        result = {}
 
         for package in packages:
-            platform_package = self.resolve_package_name(package)
-            results[package] = package_manager.is_package_installed(platform_package)
+            resolved_name = self.resolve_package_name(package)
+            result[package] = package_manager.is_package_installed(resolved_name)
 
-        return results
+        return result
 
-    def install_prerequisites(self, packages: List[str] = None) -> bool:
-        """Install required packages."""
+    def install_prerequisites(self, packages: Optional[List[str]] = None) -> bool:
+        """Install missing prerequisites."""
         if packages is None:
             packages = ['git', 'docker', 'python3']
 
         package_manager = self.get_package_manager()
 
-        # Update package list first
+        # Update package lists first
+        self.logger.info("Updating package lists...")
         if not package_manager.update_package_list():
-            self.logger.warning("Failed to update package list, continuing anyway")
+            self.logger.warning("Failed to update package lists")
 
+        # Install packages
         success = True
         for package in packages:
-            platform_package = self.resolve_package_name(package)
-            if not package_manager.is_package_installed(platform_package):
-                self.logger.info(f"Installing {package} ({platform_package})...")
-                if not package_manager.install_package(platform_package):
+            resolved_name = self.resolve_package_name(package)
+
+            if not package_manager.is_package_installed(resolved_name):
+                self.logger.info(f"Installing {package} ({resolved_name})...")
+                if not package_manager.install_package(resolved_name):
+                    self.logger.error(f"Failed to install {package}")
                     success = False
+                else:
+                    self.logger.info(f"Successfully installed {package}")
             else:
                 self.logger.info(f"{package} is already installed")
 
         return success
 
-    def get_platform_summary(self) -> str:
-        """Get a human-readable platform summary."""
-        platform_info = self.detect_platform()
-
-        summary = f"""Platform Information:
-  OS: {platform_info.os_name.title()}
-  Distribution: {platform_info.distribution}
-  Version: {platform_info.version}
-  Architecture: {platform_info.architecture}
-  Package Manager: {platform_info.package_manager}
-  Kernel: {platform_info.kernel_version}"""
-
-        if platform_info.is_wsl2:
-            summary += "\n  Environment: WSL2"
-
-        return summary
-
 
 if __name__ == "__main__":
-    # Example usage
-    manager = MultiPlatformManager()
-
+    # Basic functionality test when run directly
     print("=== FOGIS Multi-Platform Installation System ===")
     print()
-    print(manager.get_platform_summary())
+    
+    manager = MultiPlatformManager()
+    platform_info = manager.detect_platform()
+    
+    print("Platform Information:")
+    print(f"  OS: {platform_info.os_name.title()}")
+    print(f"  Distribution: {platform_info.distribution}")
+    print(f"  Version: {platform_info.version}")
+    print(f"  Architecture: {platform_info.architecture}")
+    print(f"  Package Manager: {platform_info.package_manager}")
+    if platform_info.kernel_version:
+        print(f"  Kernel: {platform_info.kernel_version}")
     print()
-
+    
     print("Checking prerequisites...")
     prereqs = manager.verify_prerequisites()
+    
     for package, installed in prereqs.items():
         status = "✓" if installed else "✗"
         print(f"  {status} {package}")
-
-    missing = [pkg for pkg, installed in prereqs.items() if not installed]
-    if missing:
-        print(f"\nMissing packages: {', '.join(missing)}")
-        print("Run with --install to install missing packages")
-    else:
-        print("\n✓ All prerequisites are satisfied!")
