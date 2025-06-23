@@ -10,16 +10,19 @@ This repository contains a **complete automated deployment solution** for the FO
 - ✅ **Comprehensive documentation** for non-technical users
 - ✅ **Health monitoring** and troubleshooting tools
 
-## **🚀 Quick Start (3 Commands)**
+## **🚀 Quick Start (4 Commands)**
 
 ```bash
-# 1. Check system status
+# 1. Set up credentials (interactive wizard)
+./manage_fogis_system.sh setup-auth
+
+# 2. Check system status
 ./show_system_status.sh
 
-# 2. Start the system (if needed)
+# 3. Start the system (if needed)
 ./manage_fogis_system.sh start
 
-# 3. Add automation
+# 4. Add automation
 ./manage_fogis_system.sh cron-add
 ```
 
@@ -36,10 +39,15 @@ This repository contains a **complete automated deployment solution** for the FO
 
 ## **🔧 Management Commands**
 
+### **Credential Setup:**
+```bash
+./manage_fogis_system.sh setup-auth # Interactive credential wizard
+```
+
 ### **System Control:**
 ```bash
 ./manage_fogis_system.sh start      # Start all services
-./manage_fogis_system.sh stop       # Stop all services  
+./manage_fogis_system.sh stop       # Stop all services
 ./manage_fogis_system.sh restart    # Restart all services
 ./manage_fogis_system.sh status     # Show detailed status
 ```
