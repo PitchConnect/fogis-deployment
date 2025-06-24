@@ -1,0 +1,159 @@
+name: Dependency Updates
+
+on:
+  schedule:
+    - cron: '0 2 * * 1'  # Weekly on Monday at 2 AM
+  workflow_dispatch:
+
+jobs:
+  update-dependencies:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install pip-tools requests
+
+      - name: Check for base image updates
+        id: base-images
+        run: |
+          # Check for Python base image updates
+          CURRENT_PYTHON=$(grep -r "FROM python:" . --include="Dockerfile" | head -1 | cut -d: -f3 | cut -d- -f1)
+          LATEST_PYTHON=$(curl -s https://registry.hub.docker.com/v2/repositories/library/python/tags/ | jq -r '.results[] | select(.name | test("^[0-9]+\\.[0-9]+$")) | .name' | sort -V | tail -1)
+          
+          echo "current_python=$CURRENT_PYTHON" >> $GITHUB_OUTPUT
+          echo "latest_python=$LATEST_PYTHON" >> $GITHUB_OUTPUT
+          
+          if [ "$CURRENT_PYTHON" != "$LATEST_PYTHON" ]; then
+            echo "python_update_available=true" >> $GITHUB_OUTPUT
+          else
+            echo "python_update_available=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update Python base images
+        if: steps.base-images.outputs.python_update_available == 'true'
+        run: |
+          find . -name "Dockerfile" -exec sed -i "s/FROM python:${{ steps.base-images.outputs.current_python }}/FROM python:${{ steps.base-images.outputs.latest_python }}/g" {} \;
+
+      - name: Check for GitHub Actions updates
+        id: actions-updates
+        run: |
+          # Check for outdated GitHub Actions
+          python3 << 'EOF'
+          import re
+          import requests
+          import os
+          
+          def get_latest_version(repo):
+              try:
+                  response = requests.get(f"https://api.github.com/repos/{repo}/releases/latest")
+                  if response.status_code == 200:
+                      return response.json()["tag_name"]
+              except:
+                  pass
+              return None
+          
+          actions_to_check = {
+              "actions/checkout": r"uses: actions/checkout@v(\d+)",
+              "actions/setup-python": r"uses: actions/setup-python@v(\d+)",
+              "docker/setup-buildx-action": r"uses: docker/setup-buildx-action@v(\d+)",
+              "docker/login-action": r"uses: docker/login-action@v(\d+)",
+              "docker/build-push-action": r"uses: docker/build-push-action@v(\d+)",
+              "docker/metadata-action": r"uses: docker/metadata-action@v(\d+)"
+          }
+          
+          updates_needed = []
+          
+          for action, pattern in actions_to_check.items():
+              latest = get_latest_version(action)
+              if latest:
+                  latest_major = latest.lstrip('v').split('.')[0]
+                  
+                  # Find all workflow files
+                  for root, dirs, files in os.walk('.github/workflows'):
+                      for file in files:
+                          if file.endswith('.yml') or file.endswith('.yaml'):
+                              filepath = os.path.join(root, file)
+                              with open(filepath, 'r') as f:
+                                  content = f.read()
+                              
+                              matches = re.findall(pattern, content)
+                              for match in matches:
+                                  if match != latest_major:
+                                      updates_needed.append(f"{action}@v{match} -> {latest}")
+          
+          if updates_needed:
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write("actions_updates_available=true\n")
+                  f.write(f"updates_list={'|'.join(updates_needed)}\n")
+          else:
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write("actions_updates_available=false\n")
+          EOF
+
+      - name: Update GitHub Actions versions
+        if: steps.actions-updates.outputs.actions_updates_available == 'true'
+        run: |
+          # Update to latest major versions
+          find .github/workflows -name "*.yml" -o -name "*.yaml" | xargs sed -i \
+            -e 's/actions\/checkout@v[0-9]/actions\/checkout@v4/g' \
+            -e 's/actions\/setup-python@v[0-9]/actions\/setup-python@v4/g' \
+            -e 's/docker\/setup-buildx-action@v[0-9]/docker\/setup-buildx-action@v3/g' \
+            -e 's/docker\/login-action@v[0-9]/docker\/login-action@v3/g' \
+            -e 's/docker\/build-push-action@v[0-9]/docker\/build-push-action@v5/g' \
+            -e 's/docker\/metadata-action@v[0-9]/docker\/metadata-action@v5/g'
+
+      - name: Create Pull Request
+        if: steps.base-images.outputs.python_update_available == 'true' || steps.actions-updates.outputs.actions_updates_available == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: update dependencies and base images'
+          title: '🔄 Automated Dependency Updates'
+          body: |
+            ## 🔄 Automated Dependency Updates
+            
+            This PR contains automated updates to keep dependencies current and secure.
+            
+            ### 📦 Updates Included
+            
+            ${{ steps.base-images.outputs.python_update_available == 'true' && format('- **Python base image**: {0} → {1}', steps.base-images.outputs.current_python, steps.base-images.outputs.latest_python) || '' }}
+            
+            ${{ steps.actions-updates.outputs.actions_updates_available == 'true' && format('- **GitHub Actions**: {0}', steps.actions-updates.outputs.updates_list) || '' }}
+            
+            ### ✅ Automated Checks
+            - [ ] All Docker images build successfully
+            - [ ] Security scans pass
+            - [ ] No breaking changes detected
+            
+            ### 🔍 Review Notes
+            - This PR was automatically generated
+            - Please review changes before merging
+            - Test deployment in staging environment
+            
+            ---
+            Co-authored by [Augment Code](https://www.augmentcode.com/?utm_source=github&utm_medium=pr&utm_campaign=dependency_updates)
+          branch: automated-dependency-updates
+          delete-branch: true
+
+      - name: Summary
+        run: |
+          echo "## 🔄 Dependency Update Summary" >> $GITHUB_STEP_SUMMARY
+          echo "**Python Update Available:** ${{ steps.base-images.outputs.python_update_available }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Actions Updates Available:** ${{ steps.actions-updates.outputs.actions_updates_available }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.base-images.outputs.python_update_available }}" = "true" ] || [ "${{ steps.actions-updates.outputs.actions_updates_available }}" = "true" ]; then
+            echo "**Action:** Pull request created for review" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Action:** No updates needed" >> $GITHUB_STEP_SUMMARY
+          fi

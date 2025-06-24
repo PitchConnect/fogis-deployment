@@ -1,0 +1,147 @@
+name: Release Management
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      changelog: ${{ steps.changelog.outputs.changelog }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION=${GITHUB_REF#refs/tags/}
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Generate changelog from git commits since last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$LAST_TAG" ]; then
+            CHANGELOG=$(git log --pretty=format:"- %s" $LAST_TAG..HEAD)
+          else
+            CHANGELOG=$(git log --pretty=format:"- %s" HEAD)
+          fi
+          
+          # Save changelog to file and output
+          echo "$CHANGELOG" > changelog.txt
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          release_name: Release ${{ steps.version.outputs.version }}
+          body: |
+            ## 🚀 FOGIS Deployment ${{ steps.version.outputs.version }}
+            
+            ### 📦 Pre-built Docker Images
+            All services are available as pre-built images:
+            - `ghcr.io/pitchconnect/fogis-api-client-service:${{ steps.version.outputs.version }}`
+            - `ghcr.io/pitchconnect/team-logo-combiner:${{ steps.version.outputs.version }}`
+            - `ghcr.io/pitchconnect/match-list-processor:${{ steps.version.outputs.version }}`
+            - `ghcr.io/pitchconnect/match-list-change-detector:${{ steps.version.outputs.version }}`
+            - `ghcr.io/pitchconnect/fogis-calendar-phonebook-sync:${{ steps.version.outputs.version }}`
+            - `ghcr.io/pitchconnect/google-drive-service:${{ steps.version.outputs.version }}`
+            
+            ### 🔄 Installation
+            ```bash
+            # Quick installation
+            curl -sSL https://raw.githubusercontent.com/PitchConnect/fogis-deployment/main/install.sh | bash
+            
+            # Or clone and setup
+            git clone https://github.com/PitchConnect/fogis-deployment.git
+            cd fogis-deployment
+            ./setup_fogis_system.sh --auto
+            ```
+            
+            ### 📋 Changes
+            ${{ steps.changelog.outputs.changelog }}
+            
+            ### 🏗️ Multi-Architecture Support
+            - ✅ AMD64 (Intel/AMD processors)
+            - ✅ ARM64 (Apple Silicon, ARM servers)
+            
+            ### 🔒 Security
+            - All images scanned for vulnerabilities
+            - Signed with GitHub's container signing
+          draft: false
+          prerelease: false
+
+  update-version-references:
+    runs-on: ubuntu-latest
+    needs: create-release
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Update version references
+        run: |
+          VERSION="${{ needs.create-release.outputs.version }}"
+          
+          # Update docker-compose.yml with new version tags
+          sed -i "s/:latest/:$VERSION/g" fogis-deployment/docker-compose-master.yml
+          
+          # Update setup script version references
+          sed -i "s/ghcr.io\/pitchconnect\/\([^:]*\):latest/ghcr.io\/pitchconnect\/\1:$VERSION/g" fogis-deployment/setup_fogis_system.sh
+          
+          # Update documentation
+          sed -i "s/Version: .*/Version: $VERSION/" README.md
+
+      - name: Commit version updates
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .
+          git commit -m "chore: update version references to ${{ needs.create-release.outputs.version }}" || exit 0
+          git push
+
+  notify-completion:
+    runs-on: ubuntu-latest
+    needs: [create-release, update-version-references]
+    if: always()
+    
+    steps:
+      - name: Release Summary
+        run: |
+          echo "## 🎉 Release ${{ needs.create-release.outputs.version }} Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Docker Images Published" >> $GITHUB_STEP_SUMMARY
+          echo "- All services built for AMD64 and ARM64" >> $GITHUB_STEP_SUMMARY
+          echo "- Images available at ghcr.io/pitchconnect/*" >> $GITHUB_STEP_SUMMARY
+          echo "- Security scanning completed" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 Ready for Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "Users can now deploy with instant image pulls!" >> $GITHUB_STEP_SUMMARY

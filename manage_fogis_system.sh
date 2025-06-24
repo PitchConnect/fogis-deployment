@@ -54,23 +54,128 @@ show_usage() {
     echo "  cron-status - Show cron job status"
     echo "  setup-auth  - Interactive credential setup wizard"
     echo "  clean       - Clean up stopped containers and images"
+    echo "  check-updates - Check for available image updates"
+    echo "  update      - Update all services to latest versions"
+    echo "  version     - Show current service versions"
+    echo "  rollback    - Rollback to previous version"
     echo ""
     echo "Examples:"
     echo "  $0 start"
     echo "  $0 logs match-list-processor"
     echo "  $0 test"
+    echo "  $0 check-updates"
+    echo "  $0 update"
 }
 
 # Function to add cron job
 add_cron() {
     CRON_COMMAND="0 * * * * cd $SCRIPT_DIR && docker-compose -f docker-compose-master.yml run --rm match-list-processor python match_list_processor.py >> logs/cron/match-processing.log 2>&1"
-    
+
     if crontab -l 2>/dev/null | grep -q "match-list-processor"; then
         print_warning "FOGIS cron job already exists"
     else
         (crontab -l 2>/dev/null; echo "$CRON_COMMAND") | crontab -
         print_status "Cron job added - runs every hour"
     fi
+}
+
+# Function to check for image updates
+check_updates() {
+    print_info "Checking for available image updates..."
+
+    local services=(
+        "ghcr.io/pitchconnect/fogis-api-client-service"
+        "ghcr.io/pitchconnect/team-logo-combiner"
+        "ghcr.io/pitchconnect/match-list-processor"
+        "ghcr.io/pitchconnect/match-list-change-detector"
+        "ghcr.io/pitchconnect/fogis-calendar-phonebook-sync"
+        "ghcr.io/pitchconnect/google-drive-service"
+    )
+
+    local updates_available=false
+
+    for service in "${services[@]}"; do
+        local current_digest=$(docker images --digests "$service:latest" --format "{{.Digest}}" 2>/dev/null)
+        local remote_digest=$(docker manifest inspect "$service:latest" 2>/dev/null | jq -r '.config.digest' 2>/dev/null)
+
+        if [ "$current_digest" != "$remote_digest" ] && [ -n "$remote_digest" ]; then
+            echo "🔄 $service: Update available"
+            updates_available=true
+        else
+            echo "✅ $service: Up to date"
+        fi
+    done
+
+    if [ "$updates_available" = true ]; then
+        print_info "Updates available! Run '$0 update' to update all services."
+        return 1
+    else
+        print_status "All services are up to date"
+        return 0
+    fi
+}
+
+# Function to update all services
+update_services() {
+    print_info "Updating all FOGIS services..."
+
+    # Stop services
+    print_info "Stopping services..."
+    docker-compose -f docker-compose-master.yml down
+
+    # Pull latest images
+    print_info "Pulling latest images..."
+    docker-compose -f docker-compose-master.yml pull
+
+    # Start services
+    print_info "Starting updated services..."
+    docker-compose -f docker-compose-master.yml up -d
+
+    # Wait for services to be ready
+    sleep 30
+
+    # Check health
+    print_info "Verifying service health..."
+    if docker-compose -f docker-compose-master.yml ps | grep -q "Up"; then
+        print_status "Update completed successfully"
+    else
+        print_error "Some services failed to start after update"
+        return 1
+    fi
+}
+
+# Function to show current versions
+show_versions() {
+    print_info "Current service versions:"
+
+    local services=(
+        "fogis-api-client-service"
+        "team-logo-combiner"
+        "match-list-processor"
+        "match-list-change-detector"
+        "fogis-calendar-phonebook-sync"
+        "google-drive-service"
+    )
+
+    for service in "${services[@]}"; do
+        local image_info=$(docker images "ghcr.io/pitchconnect/$service" --format "table {{.Repository}}:{{.Tag}}\t{{.CreatedAt}}" | tail -n +2)
+        if [ -n "$image_info" ]; then
+            echo "📦 $service: $image_info"
+        else
+            echo "❌ $service: Not found locally"
+        fi
+    done
+}
+
+# Function to rollback to previous version
+rollback_services() {
+    print_warning "Rollback functionality requires version tags to be implemented"
+    print_info "Current implementation uses :latest tags only"
+    print_info "To rollback manually:"
+    echo "  1. Stop services: $0 stop"
+    echo "  2. Pull specific version: docker pull ghcr.io/pitchconnect/SERVICE:VERSION"
+    echo "  3. Update docker-compose.yml with specific version tags"
+    echo "  4. Start services: $0 start"
 }
 
 # Function to remove cron job
@@ -165,6 +270,18 @@ case "$1" in
         print_info "Cleaning up Docker containers and images..."
         docker system prune -f
         print_status "Cleanup completed"
+        ;;
+    check-updates)
+        check_updates
+        ;;
+    update)
+        update_services
+        ;;
+    version)
+        show_versions
+        ;;
+    rollback)
+        rollback_services
         ;;
     *)
         show_usage

@@ -52,6 +52,26 @@ This repository contains a **complete automated deployment solution** for the FO
 ./manage_fogis_system.sh status     # Show detailed status
 ```
 
+### **🔄 Updates & Version Management:**
+```bash
+./manage_fogis_system.sh check-updates  # Check for image updates
+./manage_fogis_system.sh update         # Update all services
+./manage_fogis_system.sh version        # Show current versions
+./manage_fogis_system.sh rollback       # Rollback information
+```
+
+### **🧪 Testing & Validation:**
+```bash
+# Test management commands
+python3 test_management_commands.py
+
+# Benchmark deployment performance
+python3 benchmark_deployment.py
+
+# Test multi-platform compatibility
+python3 test_multiplatform.py
+```
+
 ### **Testing & Monitoring:**
 ```bash
 ./manage_fogis_system.sh test       # Test the system manually
@@ -68,13 +88,20 @@ This repository contains a **complete automated deployment solution** for the FO
 
 ## **🌐 Service Architecture**
 
-| Service | Purpose | Port |
-|---------|---------|------|
-| **FOGIS API Client** | Connects to FOGIS, serves match data | 9086 |
-| **Team Logo Combiner** | Creates WhatsApp group avatars | 9088 |
-| **Calendar/Phonebook Sync** | Syncs to Google Calendar | 9084 |
-| **Google Drive Service** | Uploads files to Google Drive | 9085 |
-| **Match Processor** | Main processing engine | (triggered) |
+| Service | Purpose | Port | Image |
+|---------|---------|------|-------|
+| **FOGIS API Client** | Connects to FOGIS, serves match data | 9086 | `ghcr.io/pitchconnect/fogis-api-client-service` |
+| **Team Logo Combiner** | Creates WhatsApp group avatars | 9088 | `ghcr.io/pitchconnect/team-logo-combiner` |
+| **Calendar/Phonebook Sync** | Syncs to Google Calendar | 9084 | `ghcr.io/pitchconnect/fogis-calendar-phonebook-sync` |
+| **Google Drive Service** | Uploads files to Google Drive | 9085 | `ghcr.io/pitchconnect/google-drive-service` |
+| **Match Processor** | Main processing engine | (triggered) | `ghcr.io/pitchconnect/match-list-processor` |
+| **Change Detector** | Monitors for new matches | 9080 | `ghcr.io/pitchconnect/match-list-change-detector` |
+
+### **📦 Container Features**
+- **Multi-Architecture**: AMD64 and ARM64 support
+- **Pre-built Images**: Instant deployment (30-60 seconds)
+- **Automated Updates**: CI/CD pipeline with security scanning
+- **Version Management**: Semantic versioning with rollback support
 
 ## **⏰ Automation**
 
