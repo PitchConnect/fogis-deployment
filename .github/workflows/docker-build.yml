@@ -106,13 +106,26 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-and-push
     if: github.event_name != 'pull_request'
-    
+
     strategy:
       matrix:
         service: [fogis-api-client-service, team-logo-combiner, match-list-processor, match-list-change-detector, fogis-calendar-phonebook-sync, google-drive-service]
-    
+
     steps:
+      - name: Check if image exists in registry
+        id: image-check
+        run: |
+          # Check if the image exists in the registry before scanning
+          if docker manifest inspect ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:latest >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Image ${{ matrix.service }} exists in registry"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Image ${{ matrix.service }} not found in registry - skipping security scan"
+          fi
+
       - name: Run Trivy vulnerability scanner
+        if: steps.image-check.outputs.exists == 'true'
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:latest
@@ -120,7 +133,7 @@ jobs:
           output: 'trivy-results.sarif'
 
       - name: Upload Trivy scan results
+        if: steps.image-check.outputs.exists == 'true' && always()
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
         with:
           sarif_file: 'trivy-results.sarif'
