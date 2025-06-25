@@ -102,6 +102,9 @@ The fogis-calendar-phonebook-sync service has been updated to use **web applicat
 **Option A: Use the Web Authentication Interface (Recommended)**
 
 ```bash
+# First, ensure the web authentication interface is running
+./start_web_auth_interface.sh
+
 # Access the web authentication manager
 open http://localhost:9087
 # Or visit manually: http://localhost:9087
