@@ -52,7 +52,7 @@ show_usage() {
     echo "  cron-add    - Add hourly cron job"
     echo "  cron-remove - Remove cron job"
     echo "  cron-status - Show cron job status"
-    echo "  setup-auth  - Interactive credential setup wizard"
+    echo "  setup-auth  - Enhanced OAuth setup wizard (5-8 min setup)"
     echo "  clean       - Clean up stopped containers and images"
     echo "  check-updates - Check for available image updates"
     echo "  update      - Update all services to latest versions"
@@ -259,11 +259,30 @@ case "$1" in
         cron_status
         ;;
     setup-auth)
-        print_info "Starting credential setup wizard..."
-        # Try the full wizard first, fallback to minimal wizard if needed
-        if ! python3 lib/credential_wizard.py 2>/dev/null; then
-            print_info "Using minimal credential wizard..."
-            python3 lib/minimal_wizard.py
+        print_info "Starting enhanced OAuth setup wizard..."
+
+        # Check if enhanced wizard is available
+        if [[ -f "lib/enhanced_oauth_wizard.py" ]]; then
+            print_info "Using enhanced OAuth wizard with browser automation..."
+            if python3 lib/enhanced_oauth_wizard.py; then
+                print_status "Enhanced OAuth setup completed successfully!"
+            else
+                print_error "Enhanced OAuth setup failed"
+                print_info "Falling back to standard credential wizard..."
+
+                # Fallback to original wizard
+                if ! python3 lib/credential_wizard.py 2>/dev/null; then
+                    print_info "Using minimal credential wizard..."
+                    python3 lib/minimal_wizard.py
+                fi
+            fi
+        else
+            print_warning "Enhanced OAuth wizard not found, using standard wizard..."
+            # Try the full wizard first, fallback to minimal wizard if needed
+            if ! python3 lib/credential_wizard.py 2>/dev/null; then
+                print_info "Using minimal credential wizard..."
+                python3 lib/minimal_wizard.py
+            fi
         fi
         ;;
     clean)
