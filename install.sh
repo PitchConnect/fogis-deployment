@@ -741,7 +741,7 @@ show_completion() {
     echo "🔧 Quick commands:"
     echo "  cd $INSTALL_DIR"
     echo "  ./fogis-deployment/manage_fogis_system.sh status"
-    echo "  ./fogis-deployment/manage_fogis_system.sh setup-auth"
+    echo "  ./fogis-deployment/manage_fogis_system.sh setup-auth  # Enhanced 5-8 min OAuth setup"
     echo "  ./fogis-deployment/show_system_status.sh"
     echo ""
     echo "📖 Documentation:"
