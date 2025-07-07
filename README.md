@@ -13,7 +13,7 @@ This repository contains a **complete automated deployment solution** for the FO
 ## **🚀 Quick Start (4 Commands)**
 
 ```bash
-# 1. Set up credentials (interactive wizard)
+# 1. Set up credentials (enhanced 5-8 min OAuth wizard)
 ./manage_fogis_system.sh setup-auth
 
 # 2. Check system status
@@ -39,10 +39,17 @@ This repository contains a **complete automated deployment solution** for the FO
 
 ## **🔧 Management Commands**
 
-### **Credential Setup:**
+### **🔐 Enhanced OAuth Setup (5-8 minutes):**
 ```bash
-./manage_fogis_system.sh setup-auth # Interactive credential wizard
+./manage_fogis_system.sh setup-auth # Enhanced OAuth wizard with browser automation
 ```
+
+**Features:**
+- ✅ **Browser automation** - Auto-opens correct Google Cloud Console pages
+- ✅ **Real-time validation** - Immediate feedback on credential files
+- ✅ **Intelligent detection** - Finds and reuses existing valid credentials
+- ✅ **Copy-paste commands** - Ready-to-use values for all fields
+- ✅ **Reduced setup time** - From 15-20 minutes to 5-8 minutes
 
 ### **System Control:**
 ```bash
