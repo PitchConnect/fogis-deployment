@@ -77,7 +77,21 @@ pip3 install google-auth-oauthlib requests python-dotenv
 
 ### **2. Google Cloud Project**
 
-#### **Setup Steps:**
+#### **🚀 Enhanced Setup (5-8 minutes with automation):**
+The FOGIS deployment now includes an **enhanced OAuth wizard** that automates most of the Google Cloud setup:
+
+```bash
+./manage_fogis_system.sh setup-auth
+```
+
+**Features:**
+- ✅ **Browser automation** - Auto-opens correct Google Cloud Console pages
+- ✅ **Real-time validation** - Immediate feedback on credential files
+- ✅ **Intelligent detection** - Finds and reuses existing valid credentials
+- ✅ **Copy-paste commands** - Ready-to-use values for all fields
+- ✅ **Reduced setup time** - From 15-20 minutes to 5-8 minutes
+
+#### **Manual Setup Steps (if needed):**
 1. **Create Google Cloud Project**
    - Go to: https://console.cloud.google.com/
    - Click "New Project"
@@ -93,10 +107,12 @@ pip3 install google-auth-oauthlib requests python-dotenv
 3. **Create OAuth Credentials**
    - Go to: APIs & Services → Credentials
    - Click "Create Credentials" → "OAuth client ID"
-   - Application type: "Web application"
+   - Application type: "Web application" ⚠️ **IMPORTANT: NOT Desktop**
    - Name: "FOGIS Web Client"
-   - Authorized redirect URIs: Add `http://localhost:8080/callback`
-   - Download JSON file
+   - Authorized redirect URIs: Add both:
+     - `http://localhost:8080/callback`
+     - `http://127.0.0.1:8080/callback`
+   - Download JSON file as `credentials.json`
 
 4. **Configure OAuth Consent Screen**
    - Go to: APIs & Services → OAuth consent screen

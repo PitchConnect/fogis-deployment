@@ -172,3 +172,11 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# FOGIS-specific credential files
+credentials.json
+credentials/google-credentials.json
+credentials/token.json
+data/*/token.json
+app/token.json
+*.credentials.json
