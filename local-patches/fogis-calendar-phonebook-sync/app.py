@@ -164,12 +164,12 @@ def create_calendar_events():
                         'description': event_data.get('description', ''),
                         'location': event_data.get('location', ''),
                         'start': {
-                            'dateTime': event_data.get('start_time') + '+01:00',  # Europe/Stockholm timezone
-                            'timeZone': 'Europe/Stockholm',
+                            'dateTime': event_data.get('start_time'),  # UTC timezone (original format)
+                            'timeZone': 'UTC',
                         },
                         'end': {
-                            'dateTime': event_data.get('end_time') + '+01:00',  # Europe/Stockholm timezone
-                            'timeZone': 'Europe/Stockholm',
+                            'dateTime': event_data.get('end_time'),  # UTC timezone (original format)
+                            'timeZone': 'UTC',
                         },
                         'reminders': {
                             'useDefault': False,
