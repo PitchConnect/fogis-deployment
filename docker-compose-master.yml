@@ -63,7 +63,7 @@ services:
 
   # Match list processor - triggered by change detector
   match-list-processor:
-    image: match-list-processor-test:100-percent-functionality
+    image: match-list-processor:100-percent-functional
     container_name: match-list-processor
     environment:
       - FOGIS_API_CLIENT_URL=http://fogis-api-client-service:8080
