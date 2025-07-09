@@ -1,4 +1,5 @@
-version: '3.8'
+# Docker Compose configuration for FOGIS services
+# Note: version field is deprecated in Compose v2
 
 services:
   # FOGIS API Client Service - centralized API access
@@ -62,13 +63,17 @@ services:
 
   # Match list processor - triggered by change detector
   match-list-processor:
-    image: ghcr.io/pitchconnect/match-list-processor:latest
+    image: match-list-processor-test:100-percent-functionality
     container_name: match-list-processor
     environment:
       - FOGIS_API_CLIENT_URL=http://fogis-api-client-service:8080
       - CALENDAR_SYNC_URL=http://fogis-calendar-phonebook-sync:5003/sync
       - LOGO_COMBINER_URL=http://team-logo-combiner:5000/combine
+      - GOOGLE_DRIVE_URL=http://google-drive-service:5000
       - LOG_LEVEL=INFO
+      - FORCE_FRESH_PROCESSING=true
+      - RUN_MODE=service
+      - SERVICE_INTERVAL=300
     volumes:
       - ./data/match-list-processor:/app/data
       - ./logs/match-list-processor:/app/logs
@@ -101,6 +106,7 @@ services:
       - FOGIS_PASSWORD=temporary
       - USER_REFEREE_NUMBER=12345  # Replace with actual referee number
       - GOOGLE_CREDENTIALS_PATH=/app/credentials/google-credentials.json
+      - GOOGLE_CALENDAR_ID=e8835809c7a887d4b3138f8b1f3ebc196bd3916dcf0b689b7f8b4a399ffc12df@group.calendar.google.com
       - LOG_LEVEL=INFO
     volumes:
       - ./data/fogis-calendar-phonebook-sync:/app/data
@@ -149,6 +155,8 @@ services:
     environment:
       - GOOGLE_CREDENTIALS_PATH=/app/credentials/google-credentials.json
       - LOG_LEVEL=INFO
+      - FLASK_HOST=0.0.0.0
+      - FLASK_PORT=5000
     volumes:
       - ./data/google-drive-service:/app/data
       - ./logs/google-drive-service:/app/logs
