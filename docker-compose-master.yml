@@ -68,7 +68,11 @@ services:
       - FOGIS_API_CLIENT_URL=http://fogis-api-client-service:8080
       - CALENDAR_SYNC_URL=http://fogis-calendar-phonebook-sync:5003/sync
       - LOGO_COMBINER_URL=http://team-logo-combiner:5000/combine
+      - GOOGLE_DRIVE_URL=http://google-drive-service:5000  # Add missing Google Drive URL
       - LOG_LEVEL=INFO
+      - FORCE_FRESH_PROCESSING=true  # Enable fresh processing for testing
+      - RUN_MODE=service              # Enable continuous service mode
+      - SERVICE_INTERVAL=300          # 5-minute processing intervals
     volumes:
       - ./data/match-list-processor:/app/data
       - ./logs/match-list-processor:/app/logs
@@ -149,6 +153,8 @@ services:
     environment:
       - GOOGLE_CREDENTIALS_PATH=/app/credentials/google-credentials.json
       - LOG_LEVEL=INFO
+      - FLASK_HOST=0.0.0.0  # Fix: Bind to all interfaces for inter-container communication
+      - FLASK_PORT=5000     # Explicit port configuration
     volumes:
       - ./data/google-drive-service:/app/data
       - ./logs/google-drive-service:/app/logs
