@@ -53,6 +53,13 @@ show_usage() {
     echo "  cron-remove - Remove cron job"
     echo "  cron-status - Show cron job status"
     echo "  setup-auth  - Enhanced OAuth setup wizard (5-8 min setup)"
+    echo ""
+    echo "Configuration Management:"
+    echo "  config-init     - Initialize portable configuration"
+    echo "  config-validate - Validate configuration"
+    echo "  config-generate - Generate config files from YAML"
+    echo ""
+    echo "Other Commands:"
     echo "  clean       - Clean up stopped containers and images"
     echo "  check-updates - Check for available image updates"
     echo "  update      - Update all services to latest versions"
@@ -301,6 +308,42 @@ case "$1" in
         ;;
     rollback)
         rollback_services
+        ;;
+    config-init)
+        print_info "Initializing portable configuration..."
+        if [[ -f "fogis-config.yaml" ]]; then
+            print_warning "fogis-config.yaml already exists"
+            read -p "Overwrite? (y/N): " confirm
+            if [[ $confirm != "y" ]]; then
+                print_info "Operation cancelled"
+                exit 0
+            fi
+        fi
+
+        if [[ ! -f "templates/fogis-config.template.yaml" ]]; then
+            print_error "Configuration template not found: templates/fogis-config.template.yaml"
+            exit 1
+        fi
+
+        cp templates/fogis-config.template.yaml fogis-config.yaml
+        print_success "Portable configuration initialized"
+        print_info "Edit fogis-config.yaml and run: $0 config-generate"
+        ;;
+    config-validate)
+        print_info "Validating configuration..."
+        if ! python3 lib/config_validator.py; then
+            print_error "Configuration validation failed"
+            exit 1
+        fi
+        print_success "Configuration validation passed"
+        ;;
+    config-generate)
+        print_info "Generating configuration files..."
+        if ! python3 lib/config_generator.py; then
+            print_error "Configuration generation failed"
+            exit 1
+        fi
+        print_success "Configuration files generated successfully"
         ;;
     *)
         show_usage
