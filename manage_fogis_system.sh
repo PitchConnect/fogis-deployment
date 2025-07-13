@@ -63,6 +63,11 @@ show_usage() {
     echo "  config-info     - Display detailed configuration information"
     echo "  setup-wizard    - Run interactive setup wizard for new installations"
     echo ""
+    echo "OAuth Management:"
+    echo "  setup-oauth     - Run comprehensive OAuth authentication wizard"
+    echo "  oauth-status    - Show OAuth authentication status"
+    echo "  oauth-test      - Test OAuth connectivity with Google services"
+    echo ""
     echo "Other Commands:"
     echo "  clean       - Clean up stopped containers and images"
     echo "  check-updates - Check for available image updates"
@@ -410,6 +415,26 @@ except Exception as e:
             exit 1
         fi
         print_status "Setup wizard completed successfully"
+        ;;
+    setup-oauth)
+        print_info "Starting OAuth authentication wizard..."
+        if ! python3 lib/oauth_wizard.py setup; then
+            print_error "OAuth setup failed"
+            exit 1
+        fi
+        print_status "OAuth authentication setup completed successfully"
+        ;;
+    oauth-status)
+        print_info "OAuth authentication status:"
+        python3 lib/oauth_wizard.py status
+        ;;
+    oauth-test)
+        print_info "Testing OAuth connectivity..."
+        if ! python3 lib/oauth_wizard.py test; then
+            print_error "OAuth connectivity test failed"
+            exit 1
+        fi
+        print_status "OAuth connectivity test completed successfully"
         ;;
     *)
         show_usage
