@@ -326,7 +326,7 @@ case "$1" in
         fi
 
         cp templates/fogis-config.template.yaml fogis-config.yaml
-        print_success "Portable configuration initialized"
+        print_status "Portable configuration initialized"
         print_info "Edit fogis-config.yaml and run: $0 config-generate"
         ;;
     config-validate)
@@ -335,7 +335,7 @@ case "$1" in
             print_error "Configuration validation failed"
             exit 1
         fi
-        print_success "Configuration validation passed"
+        print_status "Configuration validation passed"
         ;;
     config-generate)
         print_info "Generating configuration files..."
@@ -343,7 +343,7 @@ case "$1" in
             print_error "Configuration generation failed"
             exit 1
         fi
-        print_success "Configuration files generated successfully"
+        print_status "Configuration files generated successfully"
         ;;
     *)
         show_usage
