@@ -143,10 +143,11 @@ class TestConfigValidator(unittest.TestCase):
 
         self.assertTrue(any('must be a valid integer' in error for error in errors))
 
-    def test_validate_google_oauth(self):
-        """Test Google OAuth configuration validation"""
+    def test_validate_google_oauth_missing_section(self):
+        """Test Google OAuth configuration validation - missing OAuth section"""
         # Test missing OAuth section
-        config_no_oauth = self.valid_config.copy()
+        import copy
+        config_no_oauth = copy.deepcopy(self.valid_config)
         del config_no_oauth['google']['oauth']
 
         with open('fogis-config.yaml', 'w') as f:
@@ -157,8 +158,11 @@ class TestConfigValidator(unittest.TestCase):
 
         self.assertTrue(any('Missing Google OAuth configuration' in error for error in errors))
 
+    def test_validate_google_oauth_missing_scopes(self):
+        """Test Google OAuth configuration validation - missing scopes"""
         # Test missing scopes
-        config_missing_scopes = self.valid_config.copy()
+        import copy
+        config_missing_scopes = copy.deepcopy(self.valid_config)
         config_missing_scopes['google']['oauth']['scopes'] = ['https://www.googleapis.com/auth/calendar']
 
         with open('fogis-config.yaml', 'w') as f:
@@ -210,6 +214,10 @@ class TestConfigValidator(unittest.TestCase):
 
     def test_is_valid_cron(self):
         """Test cron expression validation"""
+        # Create a dummy config file for the validator
+        with open('fogis-config.yaml', 'w') as f:
+            yaml.dump(self.valid_config, f)
+
         validator = ConfigValidator()
 
         # Valid cron expressions
@@ -224,6 +232,10 @@ class TestConfigValidator(unittest.TestCase):
 
     def test_get_validation_summary(self):
         """Test validation summary generation"""
+        # Create a dummy config file for the validator
+        with open('fogis-config.yaml', 'w') as f:
+            yaml.dump(self.valid_config, f)
+
         validator = ConfigValidator('fogis-config.yaml')
 
         errors = ['Error 1', 'Error 2']
