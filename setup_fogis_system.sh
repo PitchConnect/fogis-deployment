@@ -745,30 +745,125 @@ setup_portable_workflow() {
 }
 
 offer_configuration_choice() {
-    log_info "New installation detected. Choose configuration mode:"
-    echo "1. Portable Configuration (Recommended)"
-    echo "   ✅ Single configuration file"
-    echo "   ✅ Easy backup and migration"
-    echo "   ✅ Infrastructure as Code support"
-    echo "   ✅ Enhanced validation"
+    # Check if there are legacy files that could be migrated
+    local has_legacy_files=false
+    if [[ -f ".env" ]] || [[ -f "fogis-calendar-phonebook-sync/config.json" ]]; then
+        has_legacy_files=true
+    fi
+
+    if [[ "$has_legacy_files" == "true" ]]; then
+        log_info "Existing configuration detected. Choose setup mode:"
+        echo "1. Migrate to Portable Configuration (Recommended)"
+        echo "   ✅ Convert existing .env + config.json to portable format"
+        echo "   ✅ Automatic backup and rollback capability"
+        echo "   ✅ Preserve all current settings"
+        echo ""
+        echo "2. New Portable Configuration"
+        echo "   ⚠️  Start fresh (existing config will be backed up)"
+        echo ""
+        echo "3. Keep Legacy Configuration"
+        echo "   ⚠️  Continue with current .env + config.json approach"
+        echo ""
+
+        while true; do
+            read -p "Choose setup mode (1/2/3) [1]: " choice
+            choice=${choice:-1}
+
+            case $choice in
+                1)
+                    log_info "Starting configuration migration..."
+                    if python3 lib/migration_tool.py migrate; then
+                        log_success "Migration completed successfully!"
+                        return 0
+                    else
+                        log_error "Migration failed"
+                        log_info "Falling back to new portable configuration..."
+                        setup_new_portable_config
+                        return $?
+                    fi
+                    ;;
+                2)
+                    setup_new_portable_config
+                    return $?
+                    ;;
+                3)
+                    log_info "Using legacy configuration mode"
+                    return 0
+                    ;;
+                *)
+                    log_error "Invalid choice. Please enter 1, 2, or 3."
+                    ;;
+            esac
+        done
+    else
+        log_info "New installation detected. Choose configuration mode:"
+        echo "1. Portable Configuration (Recommended)"
+        echo "   ✅ Single configuration file"
+        echo "   ✅ Easy backup and migration"
+        echo "   ✅ Infrastructure as Code support"
+        echo "   ✅ Enhanced validation"
+        echo ""
+        echo "2. Legacy Configuration (Current approach)"
+        echo "   ⚠️  Multiple configuration files"
+        echo "   ⚠️  Manual backup required"
+        echo ""
+
+        while true; do
+            read -p "Choose configuration mode (1/2) [1]: " choice
+            choice=${choice:-1}
+
+            case $choice in
+                1)
+                    setup_new_portable_config
+                    return $?
+                    ;;
+                2)
+                    log_info "Using legacy configuration mode"
+                    return 0
+                    ;;
+                *)
+                    log_error "Invalid choice. Please enter 1 or 2."
+                    ;;
+            esac
+        done
+    fi
+}
+
+setup_new_portable_config() {
+    log_info "Setting up portable configuration..."
+
+    # Offer interactive setup wizard
+    log_info "Choose setup method:"
+    echo "1. Interactive Setup Wizard (Recommended)"
+    echo "   ✅ Guided configuration with validation"
+    echo "   ✅ Smart defaults and error checking"
+    echo "   ✅ Automatic file generation"
     echo ""
-    echo "2. Legacy Configuration (Current approach)"
-    echo "   ⚠️  Multiple configuration files"
-    echo "   ⚠️  Manual backup required"
+    echo "2. Manual Configuration"
+    echo "   ⚠️  Copy template and edit manually"
+    echo "   ⚠️  Requires manual validation"
     echo ""
 
     while true; do
-        read -p "Choose configuration mode (1/2) [1]: " choice
+        read -p "Choose setup method (1/2) [1]: " choice
         choice=${choice:-1}
 
         case $choice in
             1)
-                setup_new_portable_config
-                return $?
+                log_info "Starting interactive setup wizard..."
+                if python3 lib/interactive_setup.py; then
+                    log_success "Interactive setup completed successfully!"
+                    return 0
+                else
+                    log_error "Interactive setup failed"
+                    log_info "Falling back to manual configuration..."
+                    setup_manual_portable_config
+                    return $?
+                fi
                 ;;
             2)
-                log_info "Using legacy configuration mode"
-                return 0
+                setup_manual_portable_config
+                return $?
                 ;;
             *)
                 log_error "Invalid choice. Please enter 1 or 2."
@@ -777,8 +872,8 @@ offer_configuration_choice() {
     done
 }
 
-setup_new_portable_config() {
-    log_info "Setting up portable configuration..."
+setup_manual_portable_config() {
+    log_info "Setting up manual portable configuration..."
 
     # Copy template
     if [[ ! -f "templates/fogis-config.template.yaml" ]]; then

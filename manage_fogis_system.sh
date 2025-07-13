@@ -58,6 +58,10 @@ show_usage() {
     echo "  config-init     - Initialize portable configuration"
     echo "  config-validate - Validate configuration"
     echo "  config-generate - Generate config files from YAML"
+    echo "  config-migrate  - Migrate from legacy to portable configuration"
+    echo "  config-status   - Show configuration status and migration info"
+    echo "  config-info     - Display detailed configuration information"
+    echo "  setup-wizard    - Run interactive setup wizard for new installations"
     echo ""
     echo "Other Commands:"
     echo "  clean       - Clean up stopped containers and images"
@@ -344,6 +348,68 @@ case "$1" in
             exit 1
         fi
         print_status "Configuration files generated successfully"
+        ;;
+    config-migrate)
+        print_info "Starting configuration migration..."
+        if ! python3 lib/migration_tool.py migrate; then
+            print_error "Configuration migration failed"
+            exit 1
+        fi
+        print_status "Configuration migration completed successfully"
+        ;;
+    config-status)
+        print_info "Configuration status:"
+        python3 lib/migration_tool.py status
+        ;;
+    config-info)
+        print_info "Configuration information:"
+        echo ""
+
+        # Detect current configuration mode
+        if [[ -f "fogis-config.yaml" ]]; then
+            print_status "Current mode: Portable Configuration"
+            echo "Configuration file: fogis-config.yaml"
+
+            # Show basic config info
+            if command -v python3 >/dev/null 2>&1; then
+                python3 -c "
+import yaml
+try:
+    with open('fogis-config.yaml', 'r') as f:
+        config = yaml.safe_load(f)
+    print(f\"Version: {config.get('metadata', {}).get('version', 'Unknown')}\")
+    print(f\"Created: {config.get('metadata', {}).get('created', 'Unknown')}\")
+    print(f\"FOGIS User: {config.get('fogis', {}).get('username', 'Not configured')}\")
+    print(f\"Calendar ID: {config.get('google', {}).get('calendar', {}).get('calendar_id', 'Not configured')}\")
+except Exception as e:
+    print(f\"Error reading configuration: {e}\")
+"
+            fi
+        elif [[ -f ".env" ]]; then
+            print_status "Current mode: Legacy Configuration"
+            echo "Configuration files: .env, config.json"
+
+            # Show basic .env info
+            if [[ -f ".env" ]]; then
+                echo "FOGIS User: $(grep '^FOGIS_USERNAME=' .env 2>/dev/null | cut -d'=' -f2 || echo 'Not configured')"
+                echo "Calendar ID: $(grep '^GOOGLE_CALENDAR_ID=' .env 2>/dev/null | cut -d'=' -f2 || echo 'Not configured')"
+            fi
+        else
+            print_warning "No configuration found"
+            echo "Run './manage_fogis_system.sh setup-wizard' to get started"
+        fi
+
+        echo ""
+        echo "Available backups:"
+        ls -la fogis-config-backup-*.tar.gz 2>/dev/null || echo "  No backups found"
+        ;;
+    setup-wizard)
+        print_info "Starting interactive setup wizard..."
+        if ! python3 lib/interactive_setup.py; then
+            print_error "Setup wizard failed"
+            exit 1
+        fi
+        print_status "Setup wizard completed successfully"
         ;;
     *)
         show_usage
