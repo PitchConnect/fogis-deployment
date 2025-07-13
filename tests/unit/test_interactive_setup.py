@@ -96,10 +96,18 @@ class TestInteractiveSetup(unittest.TestCase):
         self.assertTrue(result)
         self.assertEqual(self.setup_wizard.config['fogis']['username'], 'test_user')
 
+    @patch('interactive_setup.OAuthWizard')
     @patch('builtins.input')
-    def test_setup_google_oauth(self, mock_input):
-        """Test Google OAuth setup"""
-        # Mock user inputs: client type, calendar ID, drive folder
+    def test_setup_google_oauth(self, mock_input, mock_oauth_wizard_class):
+        """Test Google OAuth setup with OAuth wizard"""
+        # Mock OAuth wizard
+        mock_oauth_wizard = mock_oauth_wizard_class.return_value
+        mock_oauth_wizard.run_oauth_wizard.return_value = True
+        mock_oauth_wizard.get_oauth_status.return_value = {
+            'client_type': 'web_application'
+        }
+
+        # Mock user inputs: setup method, calendar ID, drive folder
         mock_input.side_effect = ['1', 'primary', 'WhatsApp_Assets']
 
         self.setup_wizard.initialize_config_structure()
