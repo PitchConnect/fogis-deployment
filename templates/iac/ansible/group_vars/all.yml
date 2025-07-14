@@ -1,0 +1,32 @@
+---
+# FOGIS Deployment - Ansible Group Variables
+# Generated from fogis-config.yaml
+
+# FOGIS Configuration
+fogis_username: ""
+fogis_password: ""
+user_referee_number: 0
+
+# Service Configuration
+calendar_sync_port: 9083
+google_drive_port: 9085
+
+# Docker Configuration
+docker_compose_version: "2.21.0"
+
+# System Configuration
+timezone: "Europe/Stockholm"
+locale: "en_US.UTF-8"
+
+# Security Configuration
+firewall_enabled: true
+fail2ban_enabled: true
+
+# Monitoring Configuration
+monitoring_enabled: true
+log_retention_days: 30
+
+# Backup Configuration
+backup_enabled: true
+backup_schedule: "0 2 * * *"  # Daily at 2 AM
+backup_retention_days: 30

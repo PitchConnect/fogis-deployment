@@ -17,11 +17,11 @@ jobs:
     permissions:
       contents: write
       packages: write
-    
+
     outputs:
       version: ${{ steps.version.outputs.version }}
       changelog: ${{ steps.changelog.outputs.changelog }}
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -49,7 +49,7 @@ jobs:
           else
             CHANGELOG=$(git log --pretty=format:"- %s" HEAD)
           fi
-          
+
           # Save changelog to file and output
           echo "$CHANGELOG" > changelog.txt
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
@@ -65,7 +65,7 @@ jobs:
           release_name: Release ${{ steps.version.outputs.version }}
           body: |
             ## 🚀 FOGIS Deployment ${{ steps.version.outputs.version }}
-            
+
             ### 📦 Pre-built Docker Images
             All services are available as pre-built images:
             - `ghcr.io/pitchconnect/fogis-api-client-service:${{ steps.version.outputs.version }}`
@@ -74,25 +74,25 @@ jobs:
             - `ghcr.io/pitchconnect/match-list-change-detector:${{ steps.version.outputs.version }}`
             - `ghcr.io/pitchconnect/fogis-calendar-phonebook-sync:${{ steps.version.outputs.version }}`
             - `ghcr.io/pitchconnect/google-drive-service:${{ steps.version.outputs.version }}`
-            
+
             ### 🔄 Installation
             ```bash
             # Quick installation
             curl -sSL https://raw.githubusercontent.com/PitchConnect/fogis-deployment/main/install.sh | bash
-            
+
             # Or clone and setup
             git clone https://github.com/PitchConnect/fogis-deployment.git
             cd fogis-deployment
             ./setup_fogis_system.sh --auto
             ```
-            
+
             ### 📋 Changes
             ${{ steps.changelog.outputs.changelog }}
-            
+
             ### 🏗️ Multi-Architecture Support
             - ✅ AMD64 (Intel/AMD processors)
             - ✅ ARM64 (Apple Silicon, ARM servers)
-            
+
             ### 🔒 Security
             - All images scanned for vulnerabilities
             - Signed with GitHub's container signing
@@ -104,7 +104,7 @@ jobs:
     needs: create-release
     permissions:
       contents: write
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -112,13 +112,13 @@ jobs:
       - name: Update version references
         run: |
           VERSION="${{ needs.create-release.outputs.version }}"
-          
+
           # Update docker-compose.yml with new version tags
           sed -i "s/:latest/:$VERSION/g" fogis-deployment/docker-compose-master.yml
-          
+
           # Update setup script version references
           sed -i "s/ghcr.io\/pitchconnect\/\([^:]*\):latest/ghcr.io\/pitchconnect\/\1:$VERSION/g" fogis-deployment/setup_fogis_system.sh
-          
+
           # Update documentation
           sed -i "s/Version: .*/Version: $VERSION/" README.md
 
@@ -134,7 +134,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [create-release, update-version-references]
     if: always()
-    
+
     steps:
       - name: Release Summary
         run: |

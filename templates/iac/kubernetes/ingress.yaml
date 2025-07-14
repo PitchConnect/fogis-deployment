@@ -1,0 +1,42 @@
+# FOGIS Deployment - Kubernetes Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fogis-ingress
+  namespace: fogis
+  labels:
+    app: fogis-deployment
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  tls:
+  - hosts:
+    - fogis.yourdomain.com
+    secretName: fogis-tls
+  rules:
+  - host: fogis.yourdomain.com
+    http:
+      paths:
+      - path: /calendar
+        pathType: Prefix
+        backend:
+          service:
+            name: fogis-calendar-sync-service
+            port:
+              number: 80
+      - path: /drive
+        pathType: Prefix
+        backend:
+          service:
+            name: fogis-google-drive-service
+            port:
+              number: 80
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: fogis-calendar-sync-service
+            port:
+              number: 80

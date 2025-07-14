@@ -1,0 +1,17 @@
+# FOGIS Google Drive Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: fogis-google-drive-service
+  namespace: fogis
+  labels:
+    app: fogis-google-drive
+spec:
+  selector:
+    app: fogis-google-drive
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8081
+    protocol: TCP
+  type: ClusterIP

@@ -68,6 +68,21 @@ show_usage() {
     echo "  oauth-status    - Show OAuth authentication status"
     echo "  oauth-test      - Test OAuth connectivity with Google services"
     echo ""
+    echo "Backup Management:"
+    echo "  backup-create   - Create system backup (complete, config, or credentials)"
+    echo "  backup-restore  - Restore system from backup"
+    echo "  backup-list     - List available backups"
+    echo ""
+    echo "Infrastructure as Code:"
+    echo "  iac-generate    - Generate Infrastructure as Code templates"
+    echo ""
+    echo "Monitoring and Health:"
+    echo "  health-check    - Run comprehensive system health check"
+    echo "  performance-report - Generate detailed performance report"
+    echo ""
+    echo "Quick Deployment:"
+    echo "  quick-setup     - Lightning-fast deployment (5-10 minutes)"
+    echo ""
     echo "Other Commands:"
     echo "  clean       - Clean up stopped containers and images"
     echo "  check-updates - Check for available image updates"
@@ -435,6 +450,65 @@ except Exception as e:
             exit 1
         fi
         print_status "OAuth connectivity test completed successfully"
+        ;;
+    backup-create)
+        backup_type="${2:-complete}"
+        print_info "Creating $backup_type backup..."
+        if ! python3 lib/backup_manager.py create "$backup_type"; then
+            print_error "Backup creation failed"
+            exit 1
+        fi
+        print_status "Backup created successfully"
+        ;;
+    backup-restore)
+        if [ -z "${2:-}" ]; then
+            print_error "Usage: $0 backup-restore <backup_file>"
+            exit 1
+        fi
+        backup_file="$2"
+        print_info "Restoring from backup: $backup_file"
+        if ! python3 lib/backup_manager.py restore "$backup_file"; then
+            print_error "Backup restore failed"
+            exit 1
+        fi
+        print_status "Backup restored successfully"
+        ;;
+    backup-list)
+        print_info "Available backups:"
+        python3 lib/backup_manager.py list
+        ;;
+    iac-generate)
+        platform="${2:-all}"
+        print_info "Generating Infrastructure as Code templates for: $platform"
+        if ! python3 lib/iac_generator.py "$platform"; then
+            print_error "IaC template generation failed"
+            exit 1
+        fi
+        print_status "Infrastructure as Code templates generated successfully"
+        ;;
+    health-check)
+        print_info "Running comprehensive health check..."
+        if ! python3 lib/monitoring_setup.py health-check; then
+            print_error "Health check failed"
+            exit 1
+        fi
+        print_status "Health check completed successfully"
+        ;;
+    performance-report)
+        print_info "Generating performance report..."
+        if ! python3 lib/monitoring_setup.py performance-report; then
+            print_error "Performance report generation failed"
+            exit 1
+        fi
+        print_status "Performance report generated successfully"
+        ;;
+    quick-setup)
+        print_info "Starting lightning-fast FOGIS deployment..."
+        if ! bash scripts/quick-setup.sh; then
+            print_error "Quick setup failed"
+            exit 1
+        fi
+        print_status "Quick setup completed successfully"
         ;;
     *)
         show_usage

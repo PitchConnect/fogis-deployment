@@ -1,0 +1,22 @@
+# FOGIS Deployment - Terraform Variables Example
+# Copy this file to terraform.tfvars and customize values
+
+# AWS Configuration
+aws_region = "us-west-2"
+environment = "prod"
+
+# Network Configuration
+vpc_cidr = "10.0.0.0/16"
+public_subnet_cidr = "10.0.1.0/24"
+availability_zone = "us-west-2a"
+
+# Security Configuration
+allowed_cidr = "0.0.0.0/0"  # Restrict this to your IP range for security
+
+# Instance Configuration
+ami_id = "ami-0c02fb55956c7d316"  # Ubuntu 22.04 LTS
+instance_type = "t3.medium"
+key_pair_name = "your-key-pair-name"  # Replace with your AWS key pair
+
+# Software Versions
+docker_compose_version = "2.21.0"

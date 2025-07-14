@@ -27,7 +27,7 @@ The enhanced wizard provides:
 For each API, go to the URL and click **ENABLE**:
 
 1. **Calendar API:** https://console.cloud.google.com/apis/library/calendar-json.googleapis.com?project=YOUR_PROJECT_ID
-2. **Drive API:** https://console.cloud.google.com/apis/library/drive.googleapis.com?project=YOUR_PROJECT_ID  
+2. **Drive API:** https://console.cloud.google.com/apis/library/drive.googleapis.com?project=YOUR_PROJECT_ID
 3. **People API:** https://console.cloud.google.com/apis/library/people.googleapis.com?project=YOUR_PROJECT_ID
 
 ### **Step 3: Create OAuth Client**

@@ -54,19 +54,19 @@ config_file = "fogis-calendar-phonebook-sync/config.json"
 if os.path.exists(config_file):
     with open(config_file, 'r') as f:
         config = json.load(f)
-    
+
     # Add referee number
     config["USER_REFEREE_NUMBER"] = 61318
-    
+
     # Fix scopes (remove drive scope - handled by separate service)
     config["SCOPES"] = [
         "https://www.googleapis.com/auth/calendar",
         "https://www.googleapis.com/auth/contacts"
     ]
-    
+
     with open(config_file, 'w') as f:
         json.dump(config, f, indent=2)
-    
+
     print("✅ Applied configuration fix to fogis-calendar-phonebook-sync")
 else:
     print("⚠️  fogis-calendar-phonebook-sync/config.json not found")
@@ -116,4 +116,3 @@ for service in "match-list-change-detector" "fogis-calendar-phonebook-sync"; do
         echo "⚠️  $service/requirements.txt not found"
     fi
 done
-

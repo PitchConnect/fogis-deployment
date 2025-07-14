@@ -1,0 +1,21 @@
+version: '3.8'
+services:
+  # Quick setup optimizations
+  calendar-sync:
+    restart: unless-stopped
+    healthcheck:
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  google-drive:
+    restart: unless-stopped
+    healthcheck:
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+networks:
+  default:
+    external:
+      name: fogis-network

@@ -180,3 +180,6 @@ credentials/token.json
 data/*/token.json
 app/token.json
 *.credentials.json
+
+# Data directory with sensitive information
+data/
