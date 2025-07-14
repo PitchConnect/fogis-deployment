@@ -1,0 +1,21 @@
+# FOGIS Deployment - Ansible Inventory
+# Generated inventory file
+
+all:
+  children:
+    fogis_servers:
+      hosts:
+        fogis-server-1:
+          ansible_host: 192.168.1.100  # Replace with your server IP
+          ansible_user: ubuntu
+          ansible_ssh_private_key_file: ~/.ssh/your-key.pem
+        # Add more servers as needed
+        # fogis-server-2:
+        #   ansible_host: 192.168.1.101
+        #   ansible_user: ubuntu
+        #   ansible_ssh_private_key_file: ~/.ssh/your-key.pem
+      vars:
+        # Common variables for all FOGIS servers
+        fogis_repo_url: "https://github.com/PitchConnect/fogis-deployment.git"
+        fogis_repo_branch: "main"
+        # oauth_credentials_file: "/path/to/your/credentials.json"

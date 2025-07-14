@@ -297,9 +297,9 @@ check_root() {
 detect_platform() {
     local os_type=$(uname -s)
     local arch=$(uname -m)
-    
+
     log_info "Detecting platform..."
-    
+
     case $os_type in
         "Darwin")
             echo "macOS detected ($arch)"
@@ -321,27 +321,27 @@ detect_platform() {
 # Check prerequisites
 check_prerequisites() {
     log_info "Checking prerequisites..."
-    
+
     local missing=()
-    
+
     # Check Git
     if ! command -v git &> /dev/null; then
         missing+=("git")
     fi
-    
+
     # Check Python3
     if ! command -v python3 &> /dev/null; then
         missing+=("python3")
     fi
-    
+
     # Check curl
     if ! command -v curl &> /dev/null; then
         missing+=("curl")
     fi
-    
+
     if [[ ${#missing[@]} -gt 0 ]]; then
         log_warning "Missing prerequisites: ${missing[*]}"
-        
+
         # Try to install missing prerequisites
         if command -v apt &> /dev/null; then
             log_info "Installing prerequisites with apt..."
@@ -365,7 +365,7 @@ check_prerequisites() {
             exit 1
         fi
     fi
-    
+
     log_success "Prerequisites satisfied"
 }
 

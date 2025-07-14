@@ -1,0 +1,8 @@
+# FOGIS Deployment - Kubernetes Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fogis
+  labels:
+    name: fogis
+    app: fogis-deployment

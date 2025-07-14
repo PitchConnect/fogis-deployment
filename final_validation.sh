@@ -30,11 +30,11 @@ validate_requirement() {
     local req_name="$1"
     local validation_command="$2"
     local description="$3"
-    
+
     echo ""
     log_info "Validating: $req_name"
     echo "  Description: $description"
-    
+
     if eval "$validation_command"; then
         log_success "$req_name - VALIDATED"
         ((REQUIREMENTS_MET++))
@@ -50,7 +50,7 @@ echo "📋 Validating GitHub Issue #17 Requirements..."
 # Requirement 1: Enhanced Conflict Detection System
 validate_requirement \
     "Enhanced Conflict Detection System" \
-    "[[ -f 'lib/conflict_detector.sh' ]] && 
+    "[[ -f 'lib/conflict_detector.sh' ]] &&
      grep -q 'check_directory_conflicts' lib/conflict_detector.sh &&
      grep -q 'check_container_conflicts' lib/conflict_detector.sh &&
      grep -q 'check_network_conflicts' lib/conflict_detector.sh &&
@@ -62,7 +62,7 @@ validate_requirement \
 # Requirement 2: Comprehensive Backup System
 validate_requirement \
     "Comprehensive Backup System" \
-    "[[ -f 'lib/backup_manager.sh' ]] && 
+    "[[ -f 'lib/backup_manager.sh' ]] &&
      grep -q 'create_installation_backup' lib/backup_manager.sh &&
      grep -q 'restore_from_backup' lib/backup_manager.sh &&
      grep -q 'backup_manifest' lib/backup_manager.sh &&
@@ -73,7 +73,7 @@ validate_requirement \
 # Requirement 3: Installation Mode Selection Interface
 validate_requirement \
     "Installation Mode Selection Interface" \
-    "[[ -f 'lib/installation_safety.sh' ]] && 
+    "[[ -f 'lib/installation_safety.sh' ]] &&
      grep -q 'select_installation_mode' lib/installation_safety.sh &&
      grep -q 'Fresh Installation' lib/installation_safety.sh &&
      grep -q 'Safe Upgrade' lib/installation_safety.sh &&
@@ -84,7 +84,7 @@ validate_requirement \
 # Requirement 4: Rollback Protection and Recovery
 validate_requirement \
     "Rollback Protection and Recovery" \
-    "[[ -f 'lib/installation_safety.sh' ]] && 
+    "[[ -f 'lib/installation_safety.sh' ]] &&
      grep -q 'perform_safe_upgrade' lib/installation_safety.sh &&
      grep -q 'restore_preserved_data' lib/installation_safety.sh &&
      [[ -f 'install.sh' ]] &&
@@ -95,7 +95,7 @@ validate_requirement \
 # Requirement 5: Safety Mechanisms for Docker Resource Management
 validate_requirement \
     "Safety Mechanisms for Docker Resource Management" \
-    "[[ -f 'lib/installation_safety.sh' ]] && 
+    "[[ -f 'lib/installation_safety.sh' ]] &&
      grep -q 'graceful_service_shutdown' lib/installation_safety.sh &&
      grep -q 'docker-compose.*down' lib/installation_safety.sh &&
      grep -q 'docker network rm' lib/installation_safety.sh &&
@@ -105,7 +105,7 @@ validate_requirement \
 # Requirement 6: Enhanced Install Script Integration
 validate_requirement \
     "Enhanced Install Script Integration" \
-    "[[ -f 'install.sh' ]] && 
+    "[[ -f 'install.sh' ]] &&
      grep -q 'installation_safety.sh' install.sh &&
      grep -q 'detect_all_conflicts' install.sh &&
      grep -q 'execute_installation_mode' install.sh &&

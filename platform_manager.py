@@ -25,11 +25,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
-
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -37,6 +35,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PlatformInfo:
     """Container for platform information."""
+
     os_name: str
     distribution: str
     version: str
@@ -57,7 +56,7 @@ class PackageManager(ABC):
     """Abstract base class for package managers."""
 
     def __init__(self):
-        self.name = self.__class__.__name__.replace('PackageManager', '').lower()
+        self.name = self.__class__.__name__.replace("PackageManager", "").lower()
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     @abstractmethod
@@ -84,15 +83,14 @@ class PackageManager(ABC):
         """Verify if multiple packages are installed."""
         return {pkg: self.is_package_installed(pkg) for pkg in packages}
 
-    def _run_command(self, command: List[str], check: bool = True) -> subprocess.CompletedProcess:
+    def _run_command(
+        self, command: List[str], check: bool = True
+    ) -> subprocess.CompletedProcess:
         """Run a command and return the result."""
         try:
             self.logger.debug(f"Running command: {' '.join(command)}")
             result = subprocess.run(
-                command,
-                capture_output=True,
-                text=True,
-                check=check
+                command, capture_output=True, text=True, check=check
             )
             return result
         except subprocess.CalledProcessError as e:
@@ -334,33 +332,33 @@ class MultiPlatformManager:
 
         # Package name mappings for different package managers
         self.package_mappings = {
-            'git': {
-                'apt': 'git',
-                'yum': 'git',
-                'dnf': 'git',
-                'pacman': 'git',
-                'brew': 'git',
-                'apk': 'git',
-                'zypper': 'git'
+            "git": {
+                "apt": "git",
+                "yum": "git",
+                "dnf": "git",
+                "pacman": "git",
+                "brew": "git",
+                "apk": "git",
+                "zypper": "git",
             },
-            'docker': {
-                'apt': 'docker.io',
-                'yum': 'docker',
-                'dnf': 'docker',
-                'pacman': 'docker',
-                'brew': 'docker',
-                'apk': 'docker',
-                'zypper': 'docker'
+            "docker": {
+                "apt": "docker.io",
+                "yum": "docker",
+                "dnf": "docker",
+                "pacman": "docker",
+                "brew": "docker",
+                "apk": "docker",
+                "zypper": "docker",
             },
-            'python3': {
-                'apt': 'python3',
-                'yum': 'python3',
-                'dnf': 'python3',
-                'pacman': 'python',
-                'brew': 'python@3.11',
-                'apk': 'python3',
-                'zypper': 'python3'
-            }
+            "python3": {
+                "apt": "python3",
+                "yum": "python3",
+                "dnf": "python3",
+                "pacman": "python",
+                "brew": "python@3.11",
+                "apk": "python3",
+                "zypper": "python3",
+            },
         }
 
     def detect_platform(self) -> PlatformInfo:
@@ -387,30 +385,34 @@ class MultiPlatformManager:
 
         # Try to read /etc/os-release
         try:
-            with open('/etc/os-release', 'r') as f:
+            with open("/etc/os-release", "r") as f:
                 os_release = f.read()
 
-            for line in os_release.split('\n'):
-                if line.startswith('NAME='):
-                    distribution = line.split('=')[1].strip('"')
-                elif line.startswith('VERSION_ID='):
-                    version = line.split('=')[1].strip('"')
+            for line in os_release.split("\n"):
+                if line.startswith("NAME="):
+                    distribution = line.split("=")[1].strip('"')
+                elif line.startswith("VERSION_ID="):
+                    version = line.split("=")[1].strip('"')
 
         except FileNotFoundError:
             self.logger.warning("Could not read /etc/os-release")
 
         # Determine package manager based on distribution
-        if 'ubuntu' in distribution.lower() or 'debian' in distribution.lower():
+        if "ubuntu" in distribution.lower() or "debian" in distribution.lower():
             package_manager = "apt"
-        elif 'centos' in distribution.lower() or 'rhel' in distribution.lower() or 'red hat' in distribution.lower():
+        elif (
+            "centos" in distribution.lower()
+            or "rhel" in distribution.lower()
+            or "red hat" in distribution.lower()
+        ):
             package_manager = "yum"
-        elif 'fedora' in distribution.lower():
+        elif "fedora" in distribution.lower():
             package_manager = "dnf"
-        elif 'arch' in distribution.lower():
+        elif "arch" in distribution.lower():
             package_manager = "pacman"
-        elif 'alpine' in distribution.lower():
+        elif "alpine" in distribution.lower():
             package_manager = "apk"
-        elif 'opensuse' in distribution.lower() or 'suse' in distribution.lower():
+        elif "opensuse" in distribution.lower() or "suse" in distribution.lower():
             package_manager = "zypper"
         else:
             # Try to detect package manager by checking for commands
@@ -423,7 +425,7 @@ class MultiPlatformManager:
             architecture=architecture,
             package_manager=package_manager,
             is_wsl2=is_wsl2,
-            kernel_version=kernel_version
+            kernel_version=kernel_version,
         )
 
         return self.platform_info
@@ -439,7 +441,7 @@ class MultiPlatformManager:
             version=version,
             architecture=architecture,
             package_manager="brew",
-            kernel_version=kernel_version
+            kernel_version=kernel_version,
         )
 
         return self.platform_info
@@ -454,7 +456,7 @@ class MultiPlatformManager:
             version=version,
             architecture=architecture,
             package_manager="unknown",
-            is_wsl2=True
+            is_wsl2=True,
         )
 
         return self.platform_info
@@ -462,11 +464,11 @@ class MultiPlatformManager:
     def _detect_wsl2(self) -> bool:
         """Detect if running in WSL2 environment."""
         try:
-            proc_version_path = Path('/proc/version')
+            proc_version_path = Path("/proc/version")
             if proc_version_path.exists():
-                with open(proc_version_path, 'r') as f:
+                with open(proc_version_path, "r") as f:
                     content = f.read().lower()
-                    return 'microsoft' in content and 'wsl2' in content
+                    return "microsoft" in content and "wsl2" in content
         except Exception:
             pass
         return False
@@ -480,7 +482,7 @@ class MultiPlatformManager:
             ("pacman", "pacman"),
             ("brew", "brew"),
             ("apk", "apk"),
-            ("zypper", "zypper")
+            ("zypper", "zypper"),
         ]
 
         for name, command in managers:
@@ -534,10 +536,12 @@ class MultiPlatformManager:
         # Return original package name if no mapping found
         return package
 
-    def verify_prerequisites(self, packages: Optional[List[str]] = None) -> Dict[str, bool]:
+    def verify_prerequisites(
+        self, packages: Optional[List[str]] = None
+    ) -> Dict[str, bool]:
         """Verify if prerequisites are installed."""
         if packages is None:
-            packages = ['git', 'docker', 'python3']
+            packages = ["git", "docker", "python3"]
 
         package_manager = self.get_package_manager()
         result = {}
@@ -551,7 +555,7 @@ class MultiPlatformManager:
     def install_prerequisites(self, packages: Optional[List[str]] = None) -> bool:
         """Install missing prerequisites."""
         if packages is None:
-            packages = ['git', 'docker', 'python3']
+            packages = ["git", "docker", "python3"]
 
         package_manager = self.get_package_manager()
 
@@ -582,10 +586,10 @@ if __name__ == "__main__":
     # Basic functionality test when run directly
     print("=== FOGIS Multi-Platform Installation System ===")
     print()
-    
+
     manager = MultiPlatformManager()
     platform_info = manager.detect_platform()
-    
+
     print("Platform Information:")
     print(f"  OS: {platform_info.os_name.title()}")
     print(f"  Distribution: {platform_info.distribution}")
@@ -595,10 +599,10 @@ if __name__ == "__main__":
     if platform_info.kernel_version:
         print(f"  Kernel: {platform_info.kernel_version}")
     print()
-    
+
     print("Checking prerequisites...")
     prereqs = manager.verify_prerequisites()
-    
+
     for package, installed in prereqs.items():
         status = "✓" if installed else "✗"
         print(f"  {status} {package}")
