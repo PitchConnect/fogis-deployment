@@ -1,0 +1,24 @@
+# FOGIS Deployment - Kubernetes ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fogis-config
+  namespace: fogis
+  labels:
+    app: fogis-deployment
+data:
+  # FOGIS Configuration
+  FOGIS_USERNAME: ""
+  USER_REFEREE_NUMBER: "0"
+
+  # Service Ports
+  CALENDAR_SYNC_PORT: "9083"
+  GOOGLE_DRIVE_PORT: "9085"
+
+  # Application Configuration
+  LOG_LEVEL: "INFO"
+  TIMEZONE: "Europe/Stockholm"
+
+  # Google Configuration
+  GOOGLE_CALENDAR_ID: "primary"
+  GOOGLE_DRIVE_FOLDER: "WhatsApp_Group_Assets"

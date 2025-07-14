@@ -1,0 +1,57 @@
+# FOGIS Google Drive Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fogis-google-drive
+  namespace: fogis
+  labels:
+    app: fogis-google-drive
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fogis-google-drive
+  template:
+    metadata:
+      labels:
+        app: fogis-google-drive
+    spec:
+      containers:
+      - name: google-drive
+        image: ghcr.io/pitchconnect/google-drive-service:latest
+        ports:
+        - containerPort: 8081
+        env:
+        - name: GOOGLE_DRIVE_FOLDER
+          valueFrom:
+            configMapKeyRef:
+              name: fogis-config
+              key: GOOGLE_DRIVE_FOLDER
+        volumeMounts:
+        - name: oauth-credentials
+          mountPath: /app/credentials.json
+          subPath: credentials.json
+          readOnly: true
+        - name: oauth-tokens
+          mountPath: /app/token.json
+          subPath: drive-token.json
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: oauth-credentials
+        secret:
+          secretName: fogis-secrets
+          items:
+          - key: GOOGLE_CREDENTIALS
+            path: credentials.json
+      - name: oauth-tokens
+        secret:
+          secretName: fogis-oauth-tokens
+          items:
+          - key: DRIVE_TOKEN
+            path: drive-token.json

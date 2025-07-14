@@ -1,0 +1,67 @@
+# FOGIS Calendar Sync Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fogis-calendar-sync
+  namespace: fogis
+  labels:
+    app: fogis-calendar-sync
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fogis-calendar-sync
+  template:
+    metadata:
+      labels:
+        app: fogis-calendar-sync
+    spec:
+      containers:
+      - name: calendar-sync
+        image: ghcr.io/pitchconnect/fogis-calendar-phonebook-sync:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: FOGIS_USERNAME
+          valueFrom:
+            configMapKeyRef:
+              name: fogis-config
+              key: FOGIS_USERNAME
+        - name: FOGIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: fogis-secrets
+              key: FOGIS_PASSWORD
+        - name: USER_REFEREE_NUMBER
+          valueFrom:
+            configMapKeyRef:
+              name: fogis-config
+              key: USER_REFEREE_NUMBER
+        volumeMounts:
+        - name: oauth-credentials
+          mountPath: /app/credentials.json
+          subPath: credentials.json
+          readOnly: true
+        - name: oauth-tokens
+          mountPath: /app/token.json
+          subPath: calendar-token.json
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: oauth-credentials
+        secret:
+          secretName: fogis-secrets
+          items:
+          - key: GOOGLE_CREDENTIALS
+            path: credentials.json
+      - name: oauth-tokens
+        secret:
+          secretName: fogis-oauth-tokens
+          items:
+          - key: CALENDAR_TOKEN
+            path: calendar-token.json

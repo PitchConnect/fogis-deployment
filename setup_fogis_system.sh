@@ -701,11 +701,263 @@ create_directories() {
     save_progress "directories_created"
 }
 
+# Configuration mode detection and management functions
+detect_config_mode() {
+    if [[ -f "fogis-config.yaml" ]]; then
+        echo "portable"
+    elif [[ -f ".env" ]]; then
+        echo "legacy"
+    else
+        echo "new_installation"
+    fi
+}
+
+validate_portable_config() {
+    log_info "Validating portable configuration..."
+
+    if ! python3 lib/config_validator.py; then
+        log_error "Configuration validation failed"
+        log_info "Please check your fogis-config.yaml file and fix any errors"
+        return 1
+    fi
+
+    log_success "Configuration validation passed"
+    return 0
+}
+
+setup_portable_workflow() {
+    log_info "Setting up portable configuration workflow..."
+
+    # Validate YAML configuration
+    if ! validate_portable_config; then
+        return 1
+    fi
+
+    # Generate configuration files
+    log_info "Generating configuration files from YAML..."
+    if ! python3 lib/config_generator.py; then
+        log_error "Failed to generate configuration files"
+        return 1
+    fi
+
+    log_success "Configuration files generated successfully"
+    return 0
+}
+
+offer_configuration_choice() {
+    # Check if there are legacy files that could be migrated
+    local has_legacy_files=false
+    if [[ -f ".env" ]] || [[ -f "fogis-calendar-phonebook-sync/config.json" ]]; then
+        has_legacy_files=true
+    fi
+
+    if [[ "$has_legacy_files" == "true" ]]; then
+        log_info "Existing configuration detected. Choose setup mode:"
+        echo "1. Migrate to Portable Configuration (Recommended)"
+        echo "   ✅ Convert existing .env + config.json to portable format"
+        echo "   ✅ Automatic backup and rollback capability"
+        echo "   ✅ Preserve all current settings"
+        echo ""
+        echo "2. New Portable Configuration"
+        echo "   ⚠️  Start fresh (existing config will be backed up)"
+        echo ""
+        echo "3. Keep Legacy Configuration"
+        echo "   ⚠️  Continue with current .env + config.json approach"
+        echo ""
+
+        while true; do
+            read -p "Choose setup mode (1/2/3) [1]: " choice
+            choice=${choice:-1}
+
+            case $choice in
+                1)
+                    log_info "Starting configuration migration..."
+                    if python3 lib/migration_tool.py migrate; then
+                        log_success "Migration completed successfully!"
+                        return 0
+                    else
+                        log_error "Migration failed"
+                        log_info "Falling back to new portable configuration..."
+                        setup_new_portable_config
+                        return $?
+                    fi
+                    ;;
+                2)
+                    setup_new_portable_config
+                    return $?
+                    ;;
+                3)
+                    log_info "Using legacy configuration mode"
+                    return 0
+                    ;;
+                *)
+                    log_error "Invalid choice. Please enter 1, 2, or 3."
+                    ;;
+            esac
+        done
+    else
+        log_info "New installation detected. Choose configuration mode:"
+        echo "1. Portable Configuration (Recommended)"
+        echo "   ✅ Single configuration file"
+        echo "   ✅ Easy backup and migration"
+        echo "   ✅ Infrastructure as Code support"
+        echo "   ✅ Enhanced validation"
+        echo ""
+        echo "2. Legacy Configuration (Current approach)"
+        echo "   ⚠️  Multiple configuration files"
+        echo "   ⚠️  Manual backup required"
+        echo ""
+
+        while true; do
+            read -p "Choose configuration mode (1/2) [1]: " choice
+            choice=${choice:-1}
+
+            case $choice in
+                1)
+                    setup_new_portable_config
+                    return $?
+                    ;;
+                2)
+                    log_info "Using legacy configuration mode"
+                    return 0
+                    ;;
+                *)
+                    log_error "Invalid choice. Please enter 1 or 2."
+                    ;;
+            esac
+        done
+    fi
+}
+
+setup_new_portable_config() {
+    log_info "Setting up portable configuration..."
+
+    # Offer interactive setup wizard
+    log_info "Choose setup method:"
+    echo "1. Interactive Setup Wizard (Recommended)"
+    echo "   ✅ Guided configuration with validation"
+    echo "   ✅ Smart defaults and error checking"
+    echo "   ✅ Automatic file generation"
+    echo ""
+    echo "2. Manual Configuration"
+    echo "   ⚠️  Copy template and edit manually"
+    echo "   ⚠️  Requires manual validation"
+    echo ""
+
+    while true; do
+        read -p "Choose setup method (1/2) [1]: " choice
+        choice=${choice:-1}
+
+        case $choice in
+            1)
+                log_info "Starting interactive setup wizard..."
+                if python3 lib/interactive_setup.py; then
+                    log_success "Interactive setup completed successfully!"
+                    return 0
+                else
+                    log_error "Interactive setup failed"
+                    log_info "Falling back to manual configuration..."
+                    setup_manual_portable_config
+                    return $?
+                fi
+                ;;
+            2)
+                setup_manual_portable_config
+                return $?
+                ;;
+            *)
+                log_error "Invalid choice. Please enter 1 or 2."
+                ;;
+        esac
+    done
+}
+
+setup_manual_portable_config() {
+    log_info "Setting up manual portable configuration..."
+
+    # Copy template
+    if [[ ! -f "templates/fogis-config.template.yaml" ]]; then
+        log_error "Configuration template not found: templates/fogis-config.template.yaml"
+        return 1
+    fi
+
+    cp templates/fogis-config.template.yaml fogis-config.yaml
+    log_success "Configuration template copied to fogis-config.yaml"
+
+    log_info "Please edit fogis-config.yaml with your configuration details"
+    log_info "Required fields:"
+    log_info "  - fogis.username: Your FOGIS login username"
+    log_info "  - fogis.password: Your FOGIS login password"
+    log_info "  - fogis.referee_number: Your referee number"
+    log_info ""
+    log_info "After editing, run: ./manage_fogis_system.sh config-generate"
+
+    return 0
+}
+
+setup_portable_credentials() {
+    log_info "Using portable configuration mode..."
+
+    # Setup portable workflow
+    if ! setup_portable_workflow; then
+        log_error "Portable configuration setup failed"
+        return 1
+    fi
+
+    # Continue with existing credential setup logic
+    setup_legacy_credentials
+    return $?
+}
+
+setup_legacy_credentials() {
+    # This is the existing setup_credentials function content
+    # We'll rename the original function to this
+    log_info "Using legacy configuration mode..."
+}
+
 # Enhanced credential setup using the existing wizard
 setup_credentials() {
     log_step "8/8: Credential Configuration"
 
     log_info "Setting up authentication credentials..."
+
+    # Detect configuration mode
+    local config_mode=$(detect_config_mode)
+    log_info "Configuration mode: $config_mode"
+
+    case $config_mode in
+        "portable")
+            setup_portable_credentials
+            return $?
+            ;;
+        "legacy")
+            setup_legacy_credentials
+            return $?
+            ;;
+        "new_installation")
+            offer_configuration_choice
+            if [[ $? -eq 0 ]]; then
+                # After choice, detect mode again and proceed
+                local new_mode=$(detect_config_mode)
+                if [[ "$new_mode" == "portable" ]]; then
+                    setup_portable_credentials
+                else
+                    setup_legacy_credentials
+                fi
+            else
+                return 1
+            fi
+            ;;
+        *)
+            log_error "Unknown configuration mode: $config_mode"
+            return 1
+            ;;
+    esac
+}
+
+# Legacy credential setup (original setup_credentials content)
+setup_legacy_credentials() {
+    log_info "Using legacy configuration mode..."
 
     # Check if credentials are already configured
     if [[ -f ".env" && -f "credentials/google-credentials.json" ]]; then

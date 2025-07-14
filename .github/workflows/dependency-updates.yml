@@ -11,7 +11,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -31,10 +31,10 @@ jobs:
           # Check for Python base image updates
           CURRENT_PYTHON=$(grep -r "FROM python:" . --include="Dockerfile" | head -1 | cut -d: -f3 | cut -d- -f1)
           LATEST_PYTHON=$(curl -s https://registry.hub.docker.com/v2/repositories/library/python/tags/ | jq -r '.results[] | select(.name | test("^[0-9]+\\.[0-9]+$")) | .name' | sort -V | tail -1)
-          
+
           echo "current_python=$CURRENT_PYTHON" >> $GITHUB_OUTPUT
           echo "latest_python=$LATEST_PYTHON" >> $GITHUB_OUTPUT
-          
+
           if [ "$CURRENT_PYTHON" != "$LATEST_PYTHON" ]; then
             echo "python_update_available=true" >> $GITHUB_OUTPUT
           else
@@ -54,7 +54,7 @@ jobs:
           import re
           import requests
           import os
-          
+
           def get_latest_version(repo):
               try:
                   response = requests.get(f"https://api.github.com/repos/{repo}/releases/latest")
@@ -63,7 +63,7 @@ jobs:
               except:
                   pass
               return None
-          
+
           actions_to_check = {
               "actions/checkout": r"uses: actions/checkout@v(\d+)",
               "actions/setup-python": r"uses: actions/setup-python@v(\d+)",
@@ -72,14 +72,14 @@ jobs:
               "docker/build-push-action": r"uses: docker/build-push-action@v(\d+)",
               "docker/metadata-action": r"uses: docker/metadata-action@v(\d+)"
           }
-          
+
           updates_needed = []
-          
+
           for action, pattern in actions_to_check.items():
               latest = get_latest_version(action)
               if latest:
                   latest_major = latest.lstrip('v').split('.')[0]
-                  
+
                   # Find all workflow files
                   for root, dirs, files in os.walk('.github/workflows'):
                       for file in files:
@@ -87,12 +87,12 @@ jobs:
                               filepath = os.path.join(root, file)
                               with open(filepath, 'r') as f:
                                   content = f.read()
-                              
+
                               matches = re.findall(pattern, content)
                               for match in matches:
                                   if match != latest_major:
                                       updates_needed.append(f"{action}@v{match} -> {latest}")
-          
+
           if updates_needed:
               with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
                   f.write("actions_updates_available=true\n")
@@ -123,25 +123,25 @@ jobs:
           title: '🔄 Automated Dependency Updates'
           body: |
             ## 🔄 Automated Dependency Updates
-            
+
             This PR contains automated updates to keep dependencies current and secure.
-            
+
             ### 📦 Updates Included
-            
+
             ${{ steps.base-images.outputs.python_update_available == 'true' && format('- **Python base image**: {0} → {1}', steps.base-images.outputs.current_python, steps.base-images.outputs.latest_python) || '' }}
-            
+
             ${{ steps.actions-updates.outputs.actions_updates_available == 'true' && format('- **GitHub Actions**: {0}', steps.actions-updates.outputs.updates_list) || '' }}
-            
+
             ### ✅ Automated Checks
             - [ ] All Docker images build successfully
             - [ ] Security scans pass
             - [ ] No breaking changes detected
-            
+
             ### 🔍 Review Notes
             - This PR was automatically generated
             - Please review changes before merging
             - Test deployment in staging environment
-            
+
             ---
             Co-authored by [Augment Code](https://www.augmentcode.com/?utm_source=github&utm_medium=pr&utm_campaign=dependency_updates)
           branch: automated-dependency-updates

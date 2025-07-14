@@ -53,6 +53,37 @@ show_usage() {
     echo "  cron-remove - Remove cron job"
     echo "  cron-status - Show cron job status"
     echo "  setup-auth  - Enhanced OAuth setup wizard (5-8 min setup)"
+    echo ""
+    echo "Configuration Management:"
+    echo "  config-init     - Initialize portable configuration"
+    echo "  config-validate - Validate configuration"
+    echo "  config-generate - Generate config files from YAML"
+    echo "  config-migrate  - Migrate from legacy to portable configuration"
+    echo "  config-status   - Show configuration status and migration info"
+    echo "  config-info     - Display detailed configuration information"
+    echo "  setup-wizard    - Run interactive setup wizard for new installations"
+    echo ""
+    echo "OAuth Management:"
+    echo "  setup-oauth     - Run comprehensive OAuth authentication wizard"
+    echo "  oauth-status    - Show OAuth authentication status"
+    echo "  oauth-test      - Test OAuth connectivity with Google services"
+    echo ""
+    echo "Backup Management:"
+    echo "  backup-create   - Create system backup (complete, config, or credentials)"
+    echo "  backup-restore  - Restore system from backup"
+    echo "  backup-list     - List available backups"
+    echo ""
+    echo "Infrastructure as Code:"
+    echo "  iac-generate    - Generate Infrastructure as Code templates"
+    echo ""
+    echo "Monitoring and Health:"
+    echo "  health-check    - Run comprehensive system health check"
+    echo "  performance-report - Generate detailed performance report"
+    echo ""
+    echo "Quick Deployment:"
+    echo "  quick-setup     - Lightning-fast deployment (5-10 minutes)"
+    echo ""
+    echo "Other Commands:"
     echo "  clean       - Clean up stopped containers and images"
     echo "  check-updates - Check for available image updates"
     echo "  update      - Update all services to latest versions"
@@ -301,6 +332,183 @@ case "$1" in
         ;;
     rollback)
         rollback_services
+        ;;
+    config-init)
+        print_info "Initializing portable configuration..."
+        if [[ -f "fogis-config.yaml" ]]; then
+            print_warning "fogis-config.yaml already exists"
+            read -p "Overwrite? (y/N): " confirm
+            if [[ $confirm != "y" ]]; then
+                print_info "Operation cancelled"
+                exit 0
+            fi
+        fi
+
+        if [[ ! -f "templates/fogis-config.template.yaml" ]]; then
+            print_error "Configuration template not found: templates/fogis-config.template.yaml"
+            exit 1
+        fi
+
+        cp templates/fogis-config.template.yaml fogis-config.yaml
+        print_status "Portable configuration initialized"
+        print_info "Edit fogis-config.yaml and run: $0 config-generate"
+        ;;
+    config-validate)
+        print_info "Validating configuration..."
+        if ! python3 lib/config_validator.py; then
+            print_error "Configuration validation failed"
+            exit 1
+        fi
+        print_status "Configuration validation passed"
+        ;;
+    config-generate)
+        print_info "Generating configuration files..."
+        if ! python3 lib/config_generator.py; then
+            print_error "Configuration generation failed"
+            exit 1
+        fi
+        print_status "Configuration files generated successfully"
+        ;;
+    config-migrate)
+        print_info "Starting configuration migration..."
+        if ! python3 lib/migration_tool.py migrate; then
+            print_error "Configuration migration failed"
+            exit 1
+        fi
+        print_status "Configuration migration completed successfully"
+        ;;
+    config-status)
+        print_info "Configuration status:"
+        python3 lib/migration_tool.py status
+        ;;
+    config-info)
+        print_info "Configuration information:"
+        echo ""
+
+        # Detect current configuration mode
+        if [[ -f "fogis-config.yaml" ]]; then
+            print_status "Current mode: Portable Configuration"
+            echo "Configuration file: fogis-config.yaml"
+
+            # Show basic config info
+            if command -v python3 >/dev/null 2>&1; then
+                python3 -c "
+import yaml
+try:
+    with open('fogis-config.yaml', 'r') as f:
+        config = yaml.safe_load(f)
+    print(f\"Version: {config.get('metadata', {}).get('version', 'Unknown')}\")
+    print(f\"Created: {config.get('metadata', {}).get('created', 'Unknown')}\")
+    print(f\"FOGIS User: {config.get('fogis', {}).get('username', 'Not configured')}\")
+    print(f\"Calendar ID: {config.get('google', {}).get('calendar', {}).get('calendar_id', 'Not configured')}\")
+except Exception as e:
+    print(f\"Error reading configuration: {e}\")
+"
+            fi
+        elif [[ -f ".env" ]]; then
+            print_status "Current mode: Legacy Configuration"
+            echo "Configuration files: .env, config.json"
+
+            # Show basic .env info
+            if [[ -f ".env" ]]; then
+                echo "FOGIS User: $(grep '^FOGIS_USERNAME=' .env 2>/dev/null | cut -d'=' -f2 || echo 'Not configured')"
+                echo "Calendar ID: $(grep '^GOOGLE_CALENDAR_ID=' .env 2>/dev/null | cut -d'=' -f2 || echo 'Not configured')"
+            fi
+        else
+            print_warning "No configuration found"
+            echo "Run './manage_fogis_system.sh setup-wizard' to get started"
+        fi
+
+        echo ""
+        echo "Available backups:"
+        ls -la fogis-config-backup-*.tar.gz 2>/dev/null || echo "  No backups found"
+        ;;
+    setup-wizard)
+        print_info "Starting interactive setup wizard..."
+        if ! python3 lib/interactive_setup.py; then
+            print_error "Setup wizard failed"
+            exit 1
+        fi
+        print_status "Setup wizard completed successfully"
+        ;;
+    setup-oauth)
+        print_info "Starting OAuth authentication wizard..."
+        if ! python3 lib/oauth_wizard.py setup; then
+            print_error "OAuth setup failed"
+            exit 1
+        fi
+        print_status "OAuth authentication setup completed successfully"
+        ;;
+    oauth-status)
+        print_info "OAuth authentication status:"
+        python3 lib/oauth_wizard.py status
+        ;;
+    oauth-test)
+        print_info "Testing OAuth connectivity..."
+        if ! python3 lib/oauth_wizard.py test; then
+            print_error "OAuth connectivity test failed"
+            exit 1
+        fi
+        print_status "OAuth connectivity test completed successfully"
+        ;;
+    backup-create)
+        backup_type="${2:-complete}"
+        print_info "Creating $backup_type backup..."
+        if ! python3 lib/backup_manager.py create "$backup_type"; then
+            print_error "Backup creation failed"
+            exit 1
+        fi
+        print_status "Backup created successfully"
+        ;;
+    backup-restore)
+        if [ -z "${2:-}" ]; then
+            print_error "Usage: $0 backup-restore <backup_file>"
+            exit 1
+        fi
+        backup_file="$2"
+        print_info "Restoring from backup: $backup_file"
+        if ! python3 lib/backup_manager.py restore "$backup_file"; then
+            print_error "Backup restore failed"
+            exit 1
+        fi
+        print_status "Backup restored successfully"
+        ;;
+    backup-list)
+        print_info "Available backups:"
+        python3 lib/backup_manager.py list
+        ;;
+    iac-generate)
+        platform="${2:-all}"
+        print_info "Generating Infrastructure as Code templates for: $platform"
+        if ! python3 lib/iac_generator.py "$platform"; then
+            print_error "IaC template generation failed"
+            exit 1
+        fi
+        print_status "Infrastructure as Code templates generated successfully"
+        ;;
+    health-check)
+        print_info "Running comprehensive health check..."
+        if ! python3 lib/monitoring_setup.py health-check; then
+            print_error "Health check failed"
+            exit 1
+        fi
+        print_status "Health check completed successfully"
+        ;;
+    performance-report)
+        print_info "Generating performance report..."
+        if ! python3 lib/monitoring_setup.py performance-report; then
+            print_error "Performance report generation failed"
+            exit 1
+        fi
+        print_status "Performance report generated successfully"
+        ;;
+    quick-setup)
+        print_info "Starting lightning-fast FOGIS deployment..."
+        if ! bash scripts/quick-setup.sh; then
+            print_error "Quick setup failed"
+            exit 1
+        fi
+        print_status "Quick setup completed successfully"
         ;;
     *)
         show_usage

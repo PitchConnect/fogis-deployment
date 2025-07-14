@@ -30,11 +30,11 @@ TOTAL_TESTS=0
 run_test() {
     local test_name="$1"
     local test_command="$2"
-    
+
     echo ""
     log_info "Test: $test_name"
     ((TOTAL_TESTS++))
-    
+
     if eval "$test_command"; then
         log_success "$test_name - PASSED"
         ((TESTS_PASSED++))
@@ -53,7 +53,7 @@ test_parameter_parsing() {
         parse_arguments --headless --mode=upgrade --auto-confirm --timeout=600 --operation-id=test-123
         echo \"HEADLESS:\$HEADLESS_MODE|MODE:\$INSTALL_MODE|CONFIRM:\$AUTO_CONFIRM|TIMEOUT:\$TIMEOUT_SECONDS|ID:\$OPERATION_ID\"
     " 2>/dev/null)
-    
+
     [[ "$result" == "HEADLESS:true|MODE:upgrade|CONFIRM:true|TIMEOUT:600|ID:test-123" ]] || return 1
     return 0
 }
@@ -65,7 +65,7 @@ test_environment_variables() {
         load_environment_config
         echo \"HEADLESS:\$HEADLESS_MODE|MODE:\$INSTALL_MODE|CONFIRM:\$AUTO_CONFIRM\"
     " 2>/dev/null)
-    
+
     [[ "$result" == "HEADLESS:true|MODE:force|CONFIRM:true" ]] || return 1
     return 0
 }
@@ -77,7 +77,7 @@ test_cicd_detection() {
         load_environment_config
         echo \"HEADLESS:\$HEADLESS_MODE\"
     " 2>/dev/null)
-    
+
     [[ "$result" == "HEADLESS:true" ]] || return 1
     return 0
 }
@@ -91,9 +91,9 @@ test_configuration_validation() {
         INSTALL_MODE=invalid
         validate_headless_config
     " 2>&1)
-    
+
     [[ $? -ne 0 ]] && [[ "$result1" == *"Invalid installation mode"* ]] || return 1
-    
+
     # Test invalid timeout
     local result2=$(bash -c "
         source install.sh
@@ -101,9 +101,9 @@ test_configuration_validation() {
         TIMEOUT_SECONDS=30
         validate_headless_config
     " 2>&1)
-    
+
     [[ $? -ne 0 ]] && [[ "$result2" == *"Invalid timeout seconds"* ]] || return 1
-    
+
     return 0
 }
 
@@ -115,7 +115,7 @@ test_structured_logging() {
         OPERATION_ID=test-logging
         log_info 'Test message'
     " 2>/dev/null)
-    
+
     # Validate JSON structure
     echo "$result" | jq -e '.timestamp and .level == "info" and .operation_id == "test-logging" and .message == "Test message"' >/dev/null || return 1
     return 0
@@ -129,7 +129,7 @@ test_progress_reporting() {
         OPERATION_ID=test-progress
         report_progress 'setup' 3 5 'Installing components'
     " 2>/dev/null)
-    
+
     # Validate progress JSON structure
     echo "$result" | jq -e '.level == "progress" and .phase == "setup" and .step == 3 and .total_steps == 5 and .progress_percent == 60' >/dev/null || return 1
     return 0
@@ -141,12 +141,12 @@ test_intelligent_defaults() {
     mkdir -p "$test_dir/credentials"
     echo '{"test": "data"}' > "$test_dir/credentials/test.json"
     echo "FOGIS_USERNAME=test" > "$test_dir/.env"
-    
+
     local result=$(bash -c "
         source install.sh
         INSTALL_DIR='$test_dir'
         HEADLESS_MODE=true
-        
+
         # Mock docker ps to return running containers
         docker() {
             if [[ \"\$1\" == \"ps\" ]]; then
@@ -156,14 +156,14 @@ test_intelligent_defaults() {
             fi
         }
         export -f docker
-        
+
         handle_headless_conflicts /tmp/test 2>/dev/null
         echo \"MODE:\$INSTALL_MODE\"
     ")
-    
+
     # Clean up
     rm -rf "$test_dir"
-    
+
     [[ "$result" == "MODE:upgrade" ]] || return 1
     return 0
 }
@@ -174,7 +174,7 @@ test_help_system() {
         source install.sh
         show_headless_usage
     " 2>/dev/null)
-    
+
     [[ "$result" == *"FOGIS Headless Installation"* ]] && \
     [[ "$result" == *"--headless"* ]] && \
     [[ "$result" == *"Exit Codes:"* ]] || return 1
@@ -191,7 +191,7 @@ test_error_handling() {
         validate_headless_config
     " >/dev/null 2>&1
     local exit_code=$?
-    
+
     [[ $exit_code -eq 50 ]] || return 1  # EXIT_INVALID_CONFIG
     return 0
 }
@@ -202,7 +202,7 @@ test_environment_validation() {
         source lib/installation_safety.sh
         validate_headless_environment
     " 2>/dev/null)
-    
+
     [[ $? -eq 0 ]] || return 1
     return 0
 }
@@ -215,7 +215,7 @@ test_health_verification() {
     echo "version: '3.8'" > "$test_dir/docker-compose-master.yml"
     echo "FOGIS_USERNAME=test" > "$test_dir/.env"
     chmod +x "$test_dir/manage_fogis_system.sh" 2>/dev/null || touch "$test_dir/manage_fogis_system.sh"
-    
+
     local result=$(bash -c "
         source lib/installation_safety.sh
         INSTALL_DIR='$test_dir'
@@ -223,12 +223,12 @@ test_health_verification() {
         OPERATION_ID=test-health
         verify_installation_health
     " 2>/dev/null)
-    
+
     local exit_code=$?
-    
+
     # Clean up
     rm -rf "$test_dir"
-    
+
     [[ $exit_code -eq 0 ]] || return 1
     return 0
 }
@@ -244,7 +244,7 @@ test_timeout_handling() {
         sleep 1
         echo 'timeout_test_passed'
     " 2>/dev/null)
-    
+
     [[ "$result" == "timeout_test_passed" ]] || return 1
     return 0
 }
@@ -257,7 +257,7 @@ test_backward_compatibility() {
         HEADLESS_MODE=false
         log_info 'Interactive mode test'
     " 2>/dev/null)
-    
+
     # Should not be JSON in interactive mode
     [[ "$result" != *"timestamp"* ]] && [[ "$result" == *"Interactive mode test"* ]] || return 1
     return 0
@@ -271,14 +271,14 @@ test_multiple_cicd_environments() {
         load_environment_config
         echo \"HEADLESS:\$HEADLESS_MODE\"
     " 2>/dev/null)
-    
+
     # Test GitLab CI
     local result2=$(GITLAB_CI=true bash -c "
         source install.sh
         load_environment_config
         echo \"HEADLESS:\$HEADLESS_MODE\"
     " 2>/dev/null)
-    
+
     [[ "$result1" == "HEADLESS:true" ]] && [[ "$result2" == "HEADLESS:true" ]] || return 1
     return 0
 }
@@ -292,7 +292,7 @@ test_configuration_precedence() {
         parse_arguments --mode=force
         echo \"MODE:\$INSTALL_MODE\"
     " 2>/dev/null)
-    
+
     [[ "$result" == "MODE:force" ]] || return 1
     return 0
 }

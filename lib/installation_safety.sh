@@ -115,19 +115,19 @@ select_installation_mode() {
 # Graceful service shutdown
 graceful_service_shutdown() {
     log_info "🛑 Performing graceful service shutdown..."
-    
+
     # Check if management script exists
     if [[ -f "$INSTALL_DIR/manage_fogis_system.sh" ]]; then
         log_progress "Using management script for shutdown..."
         cd "$INSTALL_DIR"
-        
+
         # Stop services gracefully
         if ./manage_fogis_system.sh stop 2>/dev/null; then
             log_success "Services stopped via management script"
         else
             log_warning "Management script shutdown failed, trying Docker Compose"
         fi
-        
+
         # Remove cron jobs
         if ./manage_fogis_system.sh cron-remove 2>/dev/null; then
             log_success "Cron jobs removed"
@@ -135,23 +135,23 @@ graceful_service_shutdown() {
             log_warning "Failed to remove cron jobs via management script"
         fi
     fi
-    
+
     # Fallback to Docker Compose
     if [[ -f "$INSTALL_DIR/docker-compose-master.yml" ]]; then
         log_progress "Using Docker Compose for shutdown..."
         cd "$INSTALL_DIR"
-        
+
         if docker-compose -f docker-compose-master.yml down --remove-orphans --volumes 2>/dev/null; then
             log_success "Services stopped via Docker Compose"
         else
             log_warning "Docker Compose shutdown failed"
         fi
     fi
-    
+
     # Manual container cleanup
     log_progress "Cleaning up any remaining containers..."
     local fogis_containers=$(docker ps -a --filter "name=fogis" --filter "name=team-logo" --filter "name=match-list" --filter "name=google-drive" --filter "name=cron-scheduler" --format "{{.Names}}" 2>/dev/null || true)
-    
+
     if [[ -n "$fogis_containers" ]]; then
         while IFS= read -r container; do
             [[ -n "$container" ]] || continue
@@ -160,13 +160,13 @@ graceful_service_shutdown() {
             docker rm "$container" 2>/dev/null || true
         done <<< "$fogis_containers"
     fi
-    
+
     # Clean up Docker network
     if docker network ls --filter "name=fogis-network" --format "{{.Name}}" 2>/dev/null | grep -q "fogis-network"; then
         log_progress "Removing Docker network..."
         docker network rm fogis-network 2>/dev/null || true
     fi
-    
+
     # Clean up cron jobs manually
     log_progress "Cleaning up cron jobs..."
     if crontab -l 2>/dev/null | grep -q "match-list-processor\|fogis"; then
@@ -176,7 +176,7 @@ graceful_service_shutdown() {
         rm -f "$temp_cron"
         log_success "Cron jobs cleaned up"
     fi
-    
+
     log_success "✅ Graceful shutdown completed"
 }
 
@@ -185,7 +185,7 @@ perform_safe_upgrade() {
     log_header "🔄 PERFORMING SAFE UPGRADE"
     log_header "=========================="
     echo ""
-    
+
     # Step 1: Create comprehensive backup
     log_info "Step 1/6: Creating comprehensive backup..."
     local backup_file=$(create_installation_backup)
@@ -193,41 +193,41 @@ perform_safe_upgrade() {
         log_error "Backup creation failed"
         return 1
     fi
-    
+
     # Step 2: Graceful service shutdown
     log_info "Step 2/6: Graceful service shutdown..."
     graceful_service_shutdown
-    
+
     # Step 3: Preserve critical data
     log_info "Step 3/6: Preserving critical data..."
     local temp_preserve="/tmp/fogis-preserve-$(date +%s)"
     mkdir -p "$temp_preserve"
-    
+
     if [[ -d "$INSTALL_DIR/credentials" ]]; then
         cp -r "$INSTALL_DIR/credentials" "$temp_preserve/" 2>/dev/null || {
             log_warning "Failed to preserve credentials"
         }
     fi
-    
+
     if [[ -d "$INSTALL_DIR/data" ]]; then
         # Only preserve essential data files
         mkdir -p "$temp_preserve/data"
         find "$INSTALL_DIR/data" -name "*.json" -o -name "*.db" -o -name "*.sqlite*" | \
             xargs -I {} cp --parents {} "$temp_preserve/" 2>/dev/null || true
     fi
-    
+
     # Step 4: Remove old installation
     log_info "Step 4/6: Removing old installation..."
     if [[ -d "$INSTALL_DIR" ]]; then
         rm -rf "$INSTALL_DIR"
         log_success "Old installation removed"
     fi
-    
+
     # Step 5: Signal for fresh installation
     log_info "Step 5/6: Ready for fresh installation..."
     echo "SAFE_UPGRADE_PRESERVE_DIR=$temp_preserve" > /tmp/fogis_upgrade_state
     echo "SAFE_UPGRADE_BACKUP=$backup_file" >> /tmp/fogis_upgrade_state
-    
+
     log_success "✅ Safe upgrade preparation completed"
     echo ""
     echo "📋 Next steps:"
@@ -242,12 +242,12 @@ restore_preserved_data() {
     if [[ ! -f "/tmp/fogis_upgrade_state" ]]; then
         return 0  # No upgrade in progress
     fi
-    
+
     source /tmp/fogis_upgrade_state
-    
+
     if [[ -n "$SAFE_UPGRADE_PRESERVE_DIR" && -d "$SAFE_UPGRADE_PRESERVE_DIR" ]]; then
         log_info "🔄 Restoring preserved data from upgrade..."
-        
+
         # Restore credentials
         if [[ -d "$SAFE_UPGRADE_PRESERVE_DIR/credentials" ]]; then
             mkdir -p "$INSTALL_DIR/credentials"
@@ -256,7 +256,7 @@ restore_preserved_data() {
             }
             log_success "Credentials restored"
         fi
-        
+
         # Restore essential data
         if [[ -d "$SAFE_UPGRADE_PRESERVE_DIR/data" ]]; then
             mkdir -p "$INSTALL_DIR/data"
@@ -265,11 +265,11 @@ restore_preserved_data() {
             }
             log_success "Essential data restored"
         fi
-        
+
         # Cleanup
         rm -rf "$SAFE_UPGRADE_PRESERVE_DIR"
         rm -f /tmp/fogis_upgrade_state
-        
+
         log_success "✅ Data restoration completed"
     fi
 }
@@ -279,10 +279,10 @@ perform_force_clean() {
     log_header "🧹 PERFORMING FORCE CLEAN INSTALLATION"
     log_header "======================================"
     echo ""
-    
+
     log_warning "⚠️ This will destroy all existing data!"
     echo ""
-    
+
     # Create backup before destruction
     log_info "Step 1/3: Creating backup before destruction..."
     local backup_file=$(create_installation_backup)
@@ -291,18 +291,18 @@ perform_force_clean() {
     else
         log_success "Backup created: $backup_file"
     fi
-    
+
     # Graceful shutdown
     log_info "Step 2/3: Graceful service shutdown..."
     graceful_service_shutdown
-    
+
     # Complete removal
     log_info "Step 3/3: Complete removal of installation..."
     if [[ -d "$INSTALL_DIR" ]]; then
         rm -rf "$INSTALL_DIR"
         log_success "Installation directory removed"
     fi
-    
+
     log_success "✅ Force clean completed"
     if [[ -n "$backup_file" ]]; then
         echo "📦 Backup available at: $backup_file"
@@ -315,7 +315,7 @@ perform_conflict_check() {
     log_header "🔍 CONFLICT CHECK ONLY MODE"
     log_header "==========================="
     echo ""
-    
+
     # Run comprehensive conflict detection
     if detect_all_conflicts; then
         echo ""
@@ -333,7 +333,7 @@ perform_conflict_check() {
         echo "2. Or manually resolve conflicts before fresh installation"
         echo "3. Or use 'Force Clean Install' if data loss is acceptable"
     fi
-    
+
     # Generate detailed report
     local report_file=$(generate_conflict_report)
     echo ""

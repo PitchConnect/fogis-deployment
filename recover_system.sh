@@ -33,20 +33,20 @@ check_docker() {
 # Check data persistence
 check_data_persistence() {
     log_info "Checking data persistence..."
-    
+
     local critical_files=(
         "data/match-list-change-detector/previous_matches.json"
         "data/fogis-calendar-phonebook-sync/token.json"
         "data/google-drive-service/google-drive-token.json"
     )
-    
+
     local missing_files=()
     for file in "${critical_files[@]}"; do
         if [ ! -f "$file" ]; then
             missing_files+=("$file")
         fi
     done
-    
+
     if [ ${#missing_files[@]} -gt 0 ]; then
         log_warning "Missing critical files:"
         for file in "${missing_files[@]}"; do
@@ -61,33 +61,33 @@ check_data_persistence() {
 # Start services in correct order
 start_services() {
     log_info "Starting FOGIS services in correct order..."
-    
+
     # Start core services first
     log_info "Starting core services..."
     docker-compose -f docker-compose-master.yml up -d fogis-api-client-service
     sleep 10
-    
+
     # Start processing services
     log_info "Starting processing services..."
     docker-compose -f docker-compose-master.yml up -d match-list-processor team-logo-combiner google-drive-service
     sleep 15
-    
+
     # Start sync services
     log_info "Starting sync services..."
     docker-compose -f docker-compose-master.yml up -d fogis-calendar-phonebook-sync
     sleep 10
-    
+
     # Start change detector and scheduler
     log_info "Starting monitoring services..."
     docker-compose -f docker-compose-master.yml up -d match-list-change-detector cron-scheduler
-    
+
     log_success "All services started"
 }
 
 # Check service health
 check_service_health() {
     log_info "Checking service health..."
-    
+
     local services=(
         "fogis-api-client-service:9086"
         "match-list-change-detector:9082"
@@ -96,15 +96,15 @@ check_service_health() {
         "google-drive-service:9085"
         "fogis-calendar-phonebook-sync:9083"
     )
-    
+
     local unhealthy_services=()
-    
+
     for service_port in "${services[@]}"; do
         local service=$(echo "$service_port" | cut -d: -f1)
         local port=$(echo "$service_port" | cut -d: -f2)
-        
+
         log_info "Checking $service..."
-        
+
         local healthy=false
         for i in {1..30}; do
             if curl -f "http://localhost:$port/health" &>/dev/null; then
@@ -114,13 +114,13 @@ check_service_health() {
             fi
             sleep 2
         done
-        
+
         if [ "$healthy" = false ]; then
             log_error "$service failed health check"
             unhealthy_services+=("$service")
         fi
     done
-    
+
     if [ ${#unhealthy_services[@]} -gt 0 ]; then
         log_error "Unhealthy services detected:"
         for service in "${unhealthy_services[@]}"; do
@@ -128,7 +128,7 @@ check_service_health() {
         done
         return 1
     fi
-    
+
     log_success "All services are healthy"
     return 0
 }
@@ -136,18 +136,18 @@ check_service_health() {
 # Check authentication status
 check_authentication() {
     log_info "Checking authentication status..."
-    
+
     # Check if tokens exist and are not expired
     local auth_issues=()
-    
+
     if [ ! -f "data/fogis-calendar-phonebook-sync/token.json" ]; then
         auth_issues+=("Calendar/Contacts authentication missing")
     fi
-    
+
     if [ ! -f "data/google-drive-service/google-drive-token.json" ]; then
         auth_issues+=("Google Drive authentication missing")
     fi
-    
+
     if [ ${#auth_issues[@]} -gt 0 ]; then
         log_warning "Authentication issues detected:"
         for issue in "${auth_issues[@]}"; do
@@ -156,7 +156,7 @@ check_authentication() {
         log_info "Run: python authenticate_all_services.py"
         return 1
     fi
-    
+
     log_success "Authentication appears to be in place"
     return 0
 }
@@ -165,11 +165,11 @@ check_authentication() {
 main() {
     echo "🔄 Starting system recovery process..."
     echo ""
-    
+
     check_docker
     check_data_persistence
     start_services
-    
+
     if check_service_health; then
         if check_authentication; then
             echo ""

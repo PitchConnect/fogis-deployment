@@ -23,7 +23,7 @@ log_with_timestamp() {
 check_service_health() {
     local service=$1
     local port=$2
-    
+
     if curl -f "http://localhost:$port/health" &>/dev/null; then
         return 0
     else
@@ -40,18 +40,18 @@ check_all_services() {
         "google-drive-service:9085"
         "fogis-calendar-phonebook-sync:9083"
     )
-    
+
     local failed_services=()
-    
+
     for service_port in "${services[@]}"; do
         local service=$(echo "$service_port" | cut -d: -f1)
         local port=$(echo "$service_port" | cut -d: -f2)
-        
+
         if ! check_service_health "$service" "$port"; then
             failed_services+=("$service")
         fi
     done
-    
+
     if [ ${#failed_services[@]} -gt 0 ]; then
         log_with_timestamp "❌ UNHEALTHY SERVICES: ${failed_services[*]}"
         return 1
@@ -63,7 +63,7 @@ check_all_services() {
 
 check_token_expiry() {
     local token_file="data/fogis-calendar-phonebook-sync/token.json"
-    
+
     if [ -f "$token_file" ]; then
         # Extract expiry date from token (this is a simplified check)
         local expiry=$(python3 -c "
@@ -78,7 +78,7 @@ try:
 except:
     print(-1)
 " 2>/dev/null)
-        
+
         if [ "$expiry" -lt 2 ]; then
             log_with_timestamp "⚠️  Google tokens expire in $expiry days"
             return 1
@@ -87,15 +87,15 @@ except:
         log_with_timestamp "❌ Token file missing"
         return 1
     fi
-    
+
     return 0
 }
 
 send_alert() {
     local message=$1
-    
+
     log_with_timestamp "🚨 ALERT: $message"
-    
+
     if [ -n "$ALERT_EMAIL" ]; then
         echo "$message" | mail -s "FOGIS System Alert" "$ALERT_EMAIL" 2>/dev/null || true
     fi
@@ -106,17 +106,17 @@ monitor_once() {
         send_alert "FOGIS services are unhealthy. Run ./recover_system.sh"
         return 1
     fi
-    
+
     if ! check_token_expiry; then
         send_alert "FOGIS authentication tokens need renewal. Run python authenticate_all_services.py"
     fi
-    
+
     return 0
 }
 
 monitor_continuous() {
     log_with_timestamp "🔍 Starting continuous monitoring (interval: ${CHECK_INTERVAL}s)"
-    
+
     while true; do
         monitor_once
         sleep "$CHECK_INTERVAL"
@@ -126,7 +126,7 @@ monitor_continuous() {
 show_status() {
     echo "🔍 FOGIS SYSTEM STATUS"
     echo "===================="
-    
+
     echo ""
     echo "📊 Service Health:"
     local services=(
@@ -137,18 +137,18 @@ show_status() {
         "google-drive-service:9085"
         "fogis-calendar-phonebook-sync:9083"
     )
-    
+
     for service_port in "${services[@]}"; do
         local service=$(echo "$service_port" | cut -d: -f1)
         local port=$(echo "$service_port" | cut -d: -f2)
-        
+
         if check_service_health "$service" "$port"; then
             echo -e "  ✅ $service"
         else
             echo -e "  ❌ $service"
         fi
     done
-    
+
     echo ""
     echo "🔐 Authentication Status:"
     if [ -f "data/fogis-calendar-phonebook-sync/token.json" ]; then
@@ -156,13 +156,13 @@ show_status() {
     else
         echo "  ❌ Calendar/Contacts token missing"
     fi
-    
+
     if [ -f "data/google-drive-service/google-drive-token.json" ]; then
         echo "  ✅ Google Drive token present"
     else
         echo "  ❌ Google Drive token missing"
     fi
-    
+
     echo ""
     echo "📁 Data Persistence:"
     if [ -f "data/match-list-change-detector/previous_matches.json" ]; then

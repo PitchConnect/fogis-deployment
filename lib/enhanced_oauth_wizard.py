@@ -11,15 +11,12 @@ OAuth credentials cannot be re-downloaded by providing maximum automation and
 guidance during the initial setup process.
 """
 
+import json
 import os
 import sys
-import json
 import time
 import webbrowser
-import subprocess
-from pathlib import Path
-from typing import Dict, Any, Optional, List
-from urllib.parse import urlencode
+from typing import Any, Dict, List, Optional
 
 # Add the parent directory to the path to import other modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -27,13 +24,15 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 try:
     # Try to import existing modules, fallback gracefully if not available
     from lib.google_oauth_manager import GoogleOAuthManager
+
     OAUTH_MANAGER_AVAILABLE = True
 except ImportError:
     OAUTH_MANAGER_AVAILABLE = False
     print("⚠️  Note: google_oauth_manager not available, using basic validation")
 
 try:
-    from lib.credential_validator import CredentialValidator
+    pass
+
     VALIDATOR_AVAILABLE = True
 except ImportError:
     VALIDATOR_AVAILABLE = False
@@ -42,7 +41,7 @@ except ImportError:
 class EnhancedOAuthWizard:
     """
     Enhanced OAuth wizard with browser automation and intelligent guidance.
-    
+
     Features:
     - Automated browser navigation to correct Google Cloud Console pages
     - Real-time credential validation with specific error messages
@@ -59,7 +58,7 @@ class EnhancedOAuthWizard:
         self.validation_results = {}
         self.existing_credentials = []
         self.setup_start_time = time.time()
-        
+
         # Ensure credentials directory exists
         os.makedirs("credentials", exist_ok=True)
 
@@ -97,12 +96,12 @@ class EnhancedOAuthWizard:
     def scan_for_existing_credentials(self) -> List[Dict[str, Any]]:
         """
         Scan for existing Google OAuth credentials in common locations.
-        
+
         Returns:
             List of dictionaries containing credential information
         """
         self.print_progress("Scanning for existing Google OAuth credentials...")
-        
+
         # Common credential locations
         locations = [
             self.credentials_path,
@@ -111,203 +110,216 @@ class EnhancedOAuthWizard:
             os.path.expanduser("~/.credentials/google-credentials.json"),
             "token.json",
             "credentials/token.json",
-            "app/token.json"
+            "app/token.json",
         ]
-        
+
         found_credentials = []
-        
+
         for location in locations:
             if os.path.exists(location):
                 try:
                     cred_info = self.analyze_credential_file(location)
                     if cred_info:
-                        found_credentials.append({
-                            'path': location,
-                            'type': cred_info['type'],
-                            'valid': cred_info['valid'],
-                            'details': cred_info.get('details', {}),
-                            'error': cred_info.get('error'),
-                            'fix': cred_info.get('fix')
-                        })
+                        found_credentials.append(
+                            {
+                                "path": location,
+                                "type": cred_info["type"],
+                                "valid": cred_info["valid"],
+                                "details": cred_info.get("details", {}),
+                                "error": cred_info.get("error"),
+                                "fix": cred_info.get("fix"),
+                            }
+                        )
                 except Exception as e:
                     self.print_warning(f"Could not analyze {location}: {e}")
-        
+
         self.existing_credentials = found_credentials
         return found_credentials
 
     def analyze_credential_file(self, file_path: str) -> Optional[Dict[str, Any]]:
         """
         Analyze a credential file to determine its type and validity.
-        
+
         Args:
             file_path: Path to the credential file
-            
+
         Returns:
             Dictionary with analysis results or None if file cannot be analyzed
         """
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path, "r") as f:
                 data = json.load(f)
-            
+
             # Determine credential type
-            if 'web' in data:
+            if "web" in data:
                 return self.validate_oauth_credentials(data, file_path)
-            elif 'installed' in data:
+            elif "installed" in data:
                 return {
-                    'type': 'OAuth Desktop Application',
-                    'valid': False,
-                    'error': 'Desktop application credentials detected',
-                    'fix': 'Create "Web application" credentials instead'
+                    "type": "OAuth Desktop Application",
+                    "valid": False,
+                    "error": "Desktop application credentials detected",
+                    "fix": 'Create "Web application" credentials instead',
                 }
-            elif 'type' in data and data['type'] == 'service_account':
+            elif "type" in data and data["type"] == "service_account":
                 return {
-                    'type': 'Service Account',
-                    'valid': True,
-                    'details': {'email': data.get('client_email', 'Unknown')}
+                    "type": "Service Account",
+                    "valid": True,
+                    "details": {"email": data.get("client_email", "Unknown")},
                 }
-            elif 'access_token' in data or 'refresh_token' in data:
+            elif "access_token" in data or "refresh_token" in data:
                 return {
-                    'type': 'OAuth Token',
-                    'valid': True,
-                    'details': {'scope': data.get('scope', 'Unknown')}
+                    "type": "OAuth Token",
+                    "valid": True,
+                    "details": {"scope": data.get("scope", "Unknown")},
                 }
             else:
                 return {
-                    'type': 'Unknown',
-                    'valid': False,
-                    'error': 'Unrecognized credential format'
+                    "type": "Unknown",
+                    "valid": False,
+                    "error": "Unrecognized credential format",
                 }
-                
+
         except json.JSONDecodeError:
             return {
-                'type': 'Invalid JSON',
-                'valid': False,
-                'error': 'File contains invalid JSON'
+                "type": "Invalid JSON",
+                "valid": False,
+                "error": "File contains invalid JSON",
             }
         except Exception as e:
             return {
-                'type': 'Error',
-                'valid': False,
-                'error': f'Cannot read file: {str(e)}'
+                "type": "Error",
+                "valid": False,
+                "error": f"Cannot read file: {str(e)}",
             }
 
-    def validate_oauth_credentials(self, creds_data: Dict[str, Any], file_path: str) -> Dict[str, Any]:
+    def validate_oauth_credentials(
+        self, creds_data: Dict[str, Any], file_path: str
+    ) -> Dict[str, Any]:
         """
         Validate OAuth credentials with detailed feedback.
-        
+
         Args:
             creds_data: Parsed credential data
             file_path: Path to the credential file
-            
+
         Returns:
             Dictionary with validation results
         """
-        if 'web' not in creds_data:
+        if "web" not in creds_data:
             return {
-                'type': 'OAuth (Invalid)',
-                'valid': False,
-                'error': 'Not web application credentials',
-                'fix': 'Create "Web application" credentials in Google Cloud Console'
+                "type": "OAuth (Invalid)",
+                "valid": False,
+                "error": "Not web application credentials",
+                "fix": 'Create "Web application" credentials in Google Cloud Console',
             }
-        
-        web_creds = creds_data['web']
-        
+
+        web_creds = creds_data["web"]
+
         # Check required fields
-        required_fields = ['client_id', 'client_secret', 'auth_uri', 'token_uri']
+        required_fields = ["client_id", "client_secret", "auth_uri", "token_uri"]
         missing_fields = [field for field in required_fields if field not in web_creds]
-        
+
         if missing_fields:
             return {
-                'type': 'OAuth Web Application (Incomplete)',
-                'valid': False,
-                'error': f'Missing required fields: {", ".join(missing_fields)}',
-                'fix': 'Re-download credentials from Google Cloud Console'
+                "type": "OAuth Web Application (Incomplete)",
+                "valid": False,
+                "error": f'Missing required fields: {", ".join(missing_fields)}',
+                "fix": "Re-download credentials from Google Cloud Console",
             }
-        
+
         # Check redirect URIs
-        redirect_uris = web_creds.get('redirect_uris', [])
-        required_uris = ['http://localhost:8080/callback', 'http://127.0.0.1:8080/callback']
-        
+        redirect_uris = web_creds.get("redirect_uris", [])
+        required_uris = [
+            "http://localhost:8080/callback",
+            "http://127.0.0.1:8080/callback",
+        ]
+
         missing_uris = [uri for uri in required_uris if uri not in redirect_uris]
         if missing_uris:
             return {
-                'type': 'OAuth Web Application (Missing URIs)',
-                'valid': False,
-                'error': f'Missing redirect URIs: {", ".join(missing_uris)}',
-                'fix': 'Add missing redirect URIs in Google Cloud Console OAuth client settings'
+                "type": "OAuth Web Application (Missing URIs)",
+                "valid": False,
+                "error": f'Missing redirect URIs: {", ".join(missing_uris)}',
+                "fix": "Add missing redirect URIs in Google Cloud Console OAuth client settings",
             }
-        
+
         # Credentials appear valid
         return {
-            'type': 'OAuth Web Application',
-            'valid': True,
-            'details': {
-                'client_id': web_creds['client_id'][:20] + '...',
-                'redirect_uris': len(redirect_uris),
-                'project_id': web_creds.get('project_id', 'Unknown')
-            }
+            "type": "OAuth Web Application",
+            "valid": True,
+            "details": {
+                "client_id": web_creds["client_id"][:20] + "...",
+                "redirect_uris": len(redirect_uris),
+                "project_id": web_creds.get("project_id", "Unknown"),
+            },
         }
 
     def display_existing_credentials(self, credentials: List[Dict[str, Any]]) -> bool:
         """
         Display found credentials and offer reuse options.
-        
+
         Args:
             credentials: List of found credential information
-            
+
         Returns:
             True if user chose to reuse existing credentials, False otherwise
         """
         if not credentials:
             return False
-        
+
         self.print_info("Found existing Google credentials:")
-        
+
         valid_credentials = []
         for i, cred in enumerate(credentials, 1):
-            status = "✅ Valid" if cred['valid'] else "❌ Invalid"
+            status = "✅ Valid" if cred["valid"] else "❌ Invalid"
             print(f"  {i}. {cred['type']} - {cred['path']} ({status})")
-            
-            if cred['valid']:
+
+            if cred["valid"]:
                 valid_credentials.append((i, cred))
-                if cred.get('details'):
-                    for key, value in cred['details'].items():
+                if cred.get("details"):
+                    for key, value in cred["details"].items():
                         print(f"     {key}: {value}")
             else:
                 print(f"     Error: {cred.get('error', 'Unknown error')}")
-                if cred.get('fix'):
+                if cred.get("fix"):
                     print(f"     Fix: {cred.get('fix')}")
-        
+
         if not valid_credentials:
-            self.print_warning("No valid credentials found. Setting up new OAuth credentials...")
+            self.print_warning(
+                "No valid credentials found. Setting up new OAuth credentials..."
+            )
             return False
-        
+
         print(f"\n  {len(credentials) + 1}. Set up new OAuth credentials")
-        
+
         while True:
             try:
                 choice = input(f"\nChoose option (1-{len(credentials) + 1}): ").strip()
-                
+
                 if choice == str(len(credentials) + 1):
                     return False  # User wants new setup
-                
+
                 choice_num = int(choice)
                 if 1 <= choice_num <= len(credentials):
                     selected_cred = credentials[choice_num - 1]
-                    
-                    if selected_cred['valid']:
+
+                    if selected_cred["valid"]:
                         return self.setup_credential_reuse(selected_cred)
                     else:
-                        self.print_error(f"Selected credentials are invalid: {selected_cred.get('error')}")
-                        if selected_cred.get('fix'):
+                        self.print_error(
+                            f"Selected credentials are invalid: {selected_cred.get('error')}"
+                        )
+                        if selected_cred.get("fix"):
                             self.print_info(f"Fix: {selected_cred.get('fix')}")
-                        
-                        retry = input("Try to fix and use anyway? (y/N): ").strip().lower()
-                        if retry in ['y', 'yes']:
+
+                        retry = (
+                            input("Try to fix and use anyway? (y/N): ").strip().lower()
+                        )
+                        if retry in ["y", "yes"]:
                             return self.setup_credential_reuse(selected_cred)
                 else:
                     print(f"Please enter a number between 1 and {len(credentials) + 1}")
-                    
+
             except ValueError:
                 print("Please enter a valid number")
             except KeyboardInterrupt:
@@ -317,35 +329,40 @@ class EnhancedOAuthWizard:
     def setup_credential_reuse(self, credential: Dict[str, Any]) -> bool:
         """
         Set up reuse of existing credentials.
-        
+
         Args:
             credential: Selected credential information
-            
+
         Returns:
             True if setup successful, False otherwise
         """
         try:
-            source_path = credential['path']
-            
+            source_path = credential["path"]
+
             # Copy to standard location if not already there
             if source_path != self.credentials_path:
-                self.print_progress(f"Copying credentials from {source_path} to {self.credentials_path}")
-                
+                self.print_progress(
+                    f"Copying credentials from {source_path} to {self.credentials_path}"
+                )
+
                 import shutil
+
                 shutil.copy2(source_path, self.credentials_path)
-                
+
                 # Also copy to backup location
                 shutil.copy2(source_path, self.backup_credentials_path)
-            
+
             self.print_success("Existing credentials configured successfully!")
-            
+
             # Test the credentials if possible
             if OAUTH_MANAGER_AVAILABLE:
                 return self.test_oauth_credentials()
             else:
-                self.print_info("Credential testing skipped (oauth manager not available)")
+                self.print_info(
+                    "Credential testing skipped (oauth manager not available)"
+                )
                 return True
-                
+
         except Exception as e:
             self.print_error(f"Failed to set up credential reuse: {e}")
             return False
@@ -375,8 +392,10 @@ class EnhancedOAuthWizard:
         print("")
 
         # Confirm user wants to proceed
-        proceed = input("🚀 Ready to start enhanced OAuth setup? (Y/n): ").strip().lower()
-        if proceed in ['n', 'no']:
+        proceed = (
+            input("🚀 Ready to start enhanced OAuth setup? (Y/n): ").strip().lower()
+        )
+        if proceed in ["n", "no"]:
             print("👋 Setup cancelled. You can run this wizard again anytime with:")
             print("   ./manage_fogis_system.sh setup-auth")
             return False
@@ -386,7 +405,9 @@ class EnhancedOAuthWizard:
             existing_creds = self.scan_for_existing_credentials()
             if existing_creds and self.display_existing_credentials(existing_creds):
                 elapsed_time = time.time() - self.setup_start_time
-                self.print_success(f"OAuth setup completed in {elapsed_time:.1f} seconds using existing credentials!")
+                self.print_success(
+                    f"OAuth setup completed in {elapsed_time:.1f} seconds using existing credentials!"
+                )
                 return True
 
             # Step 2: Guide through new OAuth setup
@@ -399,7 +420,9 @@ class EnhancedOAuthWizard:
 
             # Success!
             elapsed_time = time.time() - self.setup_start_time
-            self.print_success(f"Enhanced OAuth setup completed successfully in {elapsed_time:.1f} seconds!")
+            self.print_success(
+                f"Enhanced OAuth setup completed successfully in {elapsed_time:.1f} seconds!"
+            )
             self.display_completion_summary()
             return True
 
@@ -408,7 +431,9 @@ class EnhancedOAuthWizard:
             return False
         except Exception as e:
             self.print_error(f"Unexpected error during setup: {e}")
-            self.print_info("You can retry the setup or check the troubleshooting guide.")
+            self.print_info(
+                "You can retry the setup or check the troubleshooting guide."
+            )
             return False
 
     def guide_new_oauth_setup(self) -> bool:
@@ -421,9 +446,15 @@ class EnhancedOAuthWizard:
         self.print_step(1, "Google Cloud Project Setup")
 
         # Check if user has existing project
-        existing_project = input("Do you have an existing Google Cloud project you'd like to use? (y/N): ").strip().lower()
+        existing_project = (
+            input(
+                "Do you have an existing Google Cloud project you'd like to use? (y/N): "
+            )
+            .strip()
+            .lower()
+        )
 
-        if existing_project in ['y', 'yes']:
+        if existing_project in ["y", "yes"]:
             self.project_id = input("Enter your Google Cloud project ID: ").strip()
             if not self.project_id:
                 self.print_error("Project ID is required")
@@ -487,8 +518,10 @@ class EnhancedOAuthWizard:
                 if self.validate_project_id_format(self.project_id):
                     break
                 else:
-                    self.print_warning("Project ID format looks unusual. Continue anyway? (y/N)")
-                    if input().strip().lower() in ['y', 'yes']:
+                    self.print_warning(
+                        "Project ID format looks unusual. Continue anyway? (y/N)"
+                    )
+                    if input().strip().lower() in ["y", "yes"]:
                         break
             else:
                 self.print_error("Project ID is required to continue")
@@ -508,7 +541,8 @@ class EnhancedOAuthWizard:
         """
         # Basic validation - project IDs should be lowercase, contain letters, numbers, hyphens
         import re
-        pattern = r'^[a-z][a-z0-9-]*[a-z0-9]$'
+
+        pattern = r"^[a-z][a-z0-9-]*[a-z0-9]$"
 
         if not re.match(pattern, project_id):
             return False
@@ -517,7 +551,7 @@ class EnhancedOAuthWizard:
         if len(project_id) < 6 or len(project_id) > 30:
             return False
 
-        if '--' in project_id:  # Double hyphens not allowed
+        if "--" in project_id:  # Double hyphens not allowed
             return False
 
         return True
@@ -534,20 +568,20 @@ class EnhancedOAuthWizard:
         # APIs that need to be enabled
         apis = [
             {
-                'name': 'Google Calendar API',
-                'id': 'calendar-json.googleapis.com',
-                'description': 'For syncing matches to Google Calendar'
+                "name": "Google Calendar API",
+                "id": "calendar-json.googleapis.com",
+                "description": "For syncing matches to Google Calendar",
             },
             {
-                'name': 'Google Drive API',
-                'id': 'drive.googleapis.com',
-                'description': 'For uploading WhatsApp assets to Google Drive'
+                "name": "Google Drive API",
+                "id": "drive.googleapis.com",
+                "description": "For uploading WhatsApp assets to Google Drive",
             },
             {
-                'name': 'Google People API',
-                'id': 'people.googleapis.com',
-                'description': 'For referee contact management'
-            }
+                "name": "Google People API",
+                "id": "people.googleapis.com",
+                "description": "For referee contact management",
+            },
         ]
 
         print("🔧 We need to enable 3 Google APIs for FOGIS functionality:")
@@ -640,7 +674,7 @@ class EnhancedOAuthWizard:
             if time.time() - start_time > max_wait_time:
                 self.print_error("Timeout waiting for credentials.json file")
                 retry = input("Continue waiting? (y/N): ").strip().lower()
-                if retry not in ['y', 'yes']:
+                if retry not in ["y", "yes"]:
                     return False
                 start_time = time.time()  # Reset timer
 
@@ -668,18 +702,19 @@ class EnhancedOAuthWizard:
                 self.print_error("Could not analyze credentials file")
                 return False
 
-            if validation_result['valid']:
+            if validation_result["valid"]:
                 self.print_success("Credentials file is valid!")
 
                 # Display credential details
-                if validation_result.get('details'):
+                if validation_result.get("details"):
                     print("\n📋 Credential Details:")
-                    for key, value in validation_result['details'].items():
+                    for key, value in validation_result["details"].items():
                         print(f"   {key}: {value}")
 
                 # Copy to backup location
                 try:
                     import shutil
+
                     shutil.copy2(self.credentials_path, self.backup_credentials_path)
                     self.print_info("Backup copy created in credentials/ directory")
                 except Exception as e:
@@ -687,18 +722,28 @@ class EnhancedOAuthWizard:
 
                 return True
             else:
-                self.print_error(f"Credentials validation failed: {validation_result.get('error')}")
-                if validation_result.get('fix'):
+                self.print_error(
+                    f"Credentials validation failed: {validation_result.get('error')}"
+                )
+                if validation_result.get("fix"):
                     self.print_info(f"💡 Fix: {validation_result.get('fix')}")
 
                 # Offer to retry
                 print("\n🔄 Common issues and solutions:")
-                print("  • Wrong application type: Make sure you selected 'Web application'")
-                print("  • Missing redirect URIs: Add both localhost URLs exactly as shown")
-                print("  • Downloaded wrong file: Make sure you clicked 'DOWNLOAD JSON'")
+                print(
+                    "  • Wrong application type: Make sure you selected 'Web application'"
+                )
+                print(
+                    "  • Missing redirect URIs: Add both localhost URLs exactly as shown"
+                )
+                print(
+                    "  • Downloaded wrong file: Make sure you clicked 'DOWNLOAD JSON'"
+                )
 
-                retry = input("\nFix the issue and download again? (Y/n): ").strip().lower()
-                if retry not in ['n', 'no']:
+                retry = (
+                    input("\nFix the issue and download again? (Y/n): ").strip().lower()
+                )
+                if retry not in ["n", "no"]:
                     # Remove invalid file and retry
                     try:
                         os.remove(self.credentials_path)
@@ -768,11 +813,17 @@ class EnhancedOAuthWizard:
                     self.print_success("All API tests passed!")
                     return True
                 else:
-                    self.print_warning("Some API tests failed - this may be due to API enablement delays")
-                    self.print_info("Try running the system - APIs often work even if initial tests fail")
+                    self.print_warning(
+                        "Some API tests failed - this may be due to API enablement delays"
+                    )
+                    self.print_info(
+                        "Try running the system - APIs often work even if initial tests fail"
+                    )
 
-                    continue_anyway = input("Continue with setup? (Y/n): ").strip().lower()
-                    return continue_anyway not in ['n', 'no']
+                    continue_anyway = (
+                        input("Continue with setup? (Y/n): ").strip().lower()
+                    )
+                    return continue_anyway not in ["n", "no"]
             else:
                 self.print_error("OAuth authentication failed")
                 self.print_info("This could be due to:")
@@ -784,10 +835,14 @@ class EnhancedOAuthWizard:
 
         except Exception as e:
             self.print_error(f"OAuth testing failed: {e}")
-            self.print_info("The credentials file appears valid, so this may be a temporary issue")
+            self.print_info(
+                "The credentials file appears valid, so this may be a temporary issue"
+            )
 
-            continue_anyway = input("Continue with setup anyway? (Y/n): ").strip().lower()
-            return continue_anyway not in ['n', 'no']
+            continue_anyway = (
+                input("Continue with setup anyway? (Y/n): ").strip().lower()
+            )
+            return continue_anyway not in ["n", "no"]
 
     def display_completion_summary(self) -> None:
         """Display completion summary with next steps."""

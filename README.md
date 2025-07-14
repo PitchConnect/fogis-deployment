@@ -5,7 +5,7 @@
 This repository contains a **complete automated deployment solution** for the FOGIS containerized system, including:
 
 - ✅ **One-click setup** with automated dependency checking
-- ✅ **Cron automation** for hourly match processing  
+- ✅ **Cron automation** for hourly match processing
 - ✅ **Easy management commands** for system control
 - ✅ **Comprehensive documentation** for non-technical users
 - ✅ **Health monitoring** and troubleshooting tools

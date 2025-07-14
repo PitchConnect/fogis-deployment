@@ -30,11 +30,11 @@ TOTAL_TESTS=0
 run_test() {
     local test_name="$1"
     local test_command="$2"
-    
+
     echo ""
     log_info "Test: $test_name"
     ((TOTAL_TESTS++))
-    
+
     if eval "$test_command"; then
         log_success "$test_name - PASSED"
         ((TESTS_PASSED++))
@@ -67,15 +67,15 @@ test_conflict_detection() {
             echo 'conflicts_detected'
         fi
     ")
-    
+
     # Either result is acceptable - no conflicts or conflicts detected both indicate working system
     [[ "$result" == "no_conflicts" || "$result" == "conflicts_detected" ]] || return 1
-    
+
     # Test with existing directory (should detect conflicts)
     local test_dir="/tmp/test_fogis_$(date +%s)"
     mkdir -p "$test_dir/credentials"
     echo '{"test": "data"}' > "$test_dir/credentials/test.json"
-    
+
     local result2=$(timeout 15 bash -c "
         source lib/conflict_detector.sh
         INSTALL_DIR='$test_dir'
@@ -85,13 +85,13 @@ test_conflict_detection() {
             echo 'conflicts_detected'
         fi
     ")
-    
+
     # Clean up
     rm -rf "$test_dir"
-    
+
     # Should detect conflicts with existing directory
     [[ "$result2" == "conflicts_detected" ]] || return 1
-    
+
     return 0
 }
 
@@ -99,14 +99,14 @@ test_conflict_detection() {
 test_backup_functionality() {
     local test_install_dir="/tmp/test_fogis_backup_$(date +%s)"
     local test_backup_dir="/tmp/test_fogis_backups_$(date +%s)"
-    
+
     # Create mock installation
     mkdir -p "$test_install_dir/credentials"
     mkdir -p "$test_install_dir/data"
     echo '{"type": "service_account"}' > "$test_install_dir/credentials/google-credentials.json"
     echo 'FOGIS_USERNAME=test' > "$test_install_dir/.env"
     echo '{"matches": []}' > "$test_install_dir/data/test.json"
-    
+
     # Test backup creation
     local backup_result=$(timeout 30 bash -c "
         source lib/backup_manager.sh
@@ -119,17 +119,17 @@ test_backup_functionality() {
             echo 'backup_failed'
         fi
     ")
-    
+
     # Verify backup was created
     [[ "$backup_result" != "backup_failed" && -f "$backup_result" ]] || {
         rm -rf "$test_install_dir" "$test_backup_dir"
         return 1
     }
-    
+
     # Test restoration
     rm -rf "$test_install_dir"
     local restore_dir="/tmp/test_restore_$(date +%s)"
-    
+
     local restore_result=$(timeout 30 bash -c "
         source lib/backup_manager.sh
         if restore_from_backup '$backup_result' '$restore_dir' >/dev/null 2>&1; then
@@ -138,7 +138,7 @@ test_backup_functionality() {
             echo 'restore_failed'
         fi
     ")
-    
+
     # Verify restoration worked
     local success=0
     if [[ "$restore_result" == "restore_success" ]] && \
@@ -146,10 +146,10 @@ test_backup_functionality() {
        [[ -f "$restore_dir/.env" ]]; then
         success=1
     fi
-    
+
     # Clean up
     rm -rf "$test_install_dir" "$test_backup_dir" "$restore_dir" "$backup_result"
-    
+
     [[ $success -eq 1 ]] || return 1
     return 0
 }
@@ -164,7 +164,7 @@ test_installation_modes() {
         type perform_force_clean >/dev/null &&
         type perform_conflict_check >/dev/null
     " || return 1
-    
+
     return 0
 }
 
@@ -175,7 +175,7 @@ test_install_script_integration() {
     grep -q "detect_all_conflicts" install.sh || return 1
     grep -q "handle_installation_failure" install.sh || return 1
     grep -q "rollback" install.sh || return 1
-    
+
     return 0
 }
 
@@ -187,7 +187,7 @@ test_graceful_shutdown() {
         INSTALL_DIR=/tmp/nonexistent_$(date +%s)
         graceful_service_shutdown >/dev/null 2>&1
     " || return 1
-    
+
     return 0
 }
 
@@ -195,37 +195,37 @@ test_graceful_shutdown() {
 test_github_requirements() {
     local requirements_met=0
     local total_requirements=5
-    
+
     # Requirement 1: Enhanced Conflict Detection
     if [[ -f "lib/conflict_detector.sh" ]] && \
        grep -q "check_directory_conflicts\|check_container_conflicts\|check_network_conflicts" lib/conflict_detector.sh; then
         ((requirements_met++))
     fi
-    
+
     # Requirement 2: Comprehensive Backup System
     if [[ -f "lib/backup_manager.sh" ]] && \
        grep -q "create_installation_backup\|restore_from_backup" lib/backup_manager.sh; then
         ((requirements_met++))
     fi
-    
+
     # Requirement 3: Installation Safety System
     if [[ -f "lib/installation_safety.sh" ]] && \
        grep -q "perform_safe_upgrade\|graceful_service_shutdown" lib/installation_safety.sh; then
         ((requirements_met++))
     fi
-    
+
     # Requirement 4: Enhanced Install Script
     if grep -q "detect_all_conflicts\|handle_installation_failure" install.sh; then
         ((requirements_met++))
     fi
-    
+
     # Requirement 5: Test Coverage
     if [[ -f "tests/unit/test_conflict_detector.py" ]] && \
        [[ -f "tests/unit/test_backup_manager.py" ]] && \
        [[ -f "tests/integration/test_safe_installation.py" ]]; then
         ((requirements_met++))
     fi
-    
+
     # Require all 5 requirements to be met
     [[ $requirements_met -eq $total_requirements ]] || return 1
     return 0
