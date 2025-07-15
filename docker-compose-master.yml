@@ -25,9 +25,11 @@ services:
       retries: 3
       start_period: 40s
 
-  # Core orchestration service - runs on cron schedule every hour
+  # Core orchestration service - runs as persistent service with internal scheduling
   match-list-change-detector:
-    image: ghcr.io/pitchconnect/match-list-change-detector:latest
+    build:
+      context: local-patches/match-list-change-detector
+      dockerfile: Dockerfile.patched
     container_name: match-list-change-detector
     environment:
       - FOGIS_USERNAME=${FOGIS_USERNAME}
@@ -38,6 +40,8 @@ services:
       - PROMETHEUS_PORT=8081
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - WEBHOOK_URL=${WEBHOOK_URL:-http://match-list-processor:5000/process}
+      - RUN_MODE=service
+      - CRON_SCHEDULE=${MATCH_DETECTOR_CRON_SCHEDULE:-0 * * * *}
     volumes:
       - ./data/match-list-change-detector:/app/data
       - ./logs/match-list-change-detector:/app/logs
@@ -71,18 +75,18 @@ services:
       - GOOGLE_DRIVE_URL=http://google-drive-service:5000  # Add missing Google Drive URL
       - LOG_LEVEL=INFO
       - FORCE_FRESH_PROCESSING=true  # Enable fresh processing for testing
-      - RUN_MODE=service              # Enable continuous service mode
+      - RUN_MODE=oneshot              # Use oneshot mode to avoid circular import issue
       - SERVICE_INTERVAL=300          # 5-minute processing intervals
     volumes:
       - ./data/match-list-processor:/app/data
       - ./logs/match-list-processor:/app/logs
     ports:
-      - "9082:5000"  # API endpoint
+      - "9082:8000"  # Health endpoint (corrected port)
     networks:
       - fogis-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -171,21 +175,7 @@ services:
       retries: 3
       start_period: 40s
 
-  # Cron scheduler for match-list-change-detector
-  cron-scheduler:
-    image: alpine:latest
-    container_name: cron-scheduler
-    command: >
-      sh -c "
-        apk add --no-cache curl &&
-        echo '0 * * * * curl -X POST http://match-list-change-detector:8080/trigger' > /etc/crontabs/root &&
-        crond -f -l 2
-      "
-    networks:
-      - fogis-network
-    restart: unless-stopped
-    depends_on:
-      - match-list-change-detector
+
 
 networks:
   fogis-network:

@@ -34,8 +34,8 @@ check_service_health() {
 check_all_services() {
     local services=(
         "fogis-api-client-service:9086"
-        "match-list-change-detector:9082"
-        "match-list-processor:9081"
+        "match-list-change-detector:9080"
+        "match-list-processor:9082"
         "team-logo-combiner:9088"
         "google-drive-service:9085"
         "fogis-calendar-phonebook-sync:9083"
@@ -131,8 +131,8 @@ show_status() {
     echo "📊 Service Health:"
     local services=(
         "fogis-api-client-service:9086"
-        "match-list-change-detector:9082"
-        "match-list-processor:9081"
+        "match-list-change-detector:9080"
+        "match-list-processor:9082"
         "team-logo-combiner:9088"
         "google-drive-service:9085"
         "fogis-calendar-phonebook-sync:9083"

@@ -462,15 +462,28 @@ except Exception as e:
         ;;
     backup-restore)
         if [ -z "${2:-}" ]; then
-            print_error "Usage: $0 backup-restore <backup_file>"
+            print_error "Usage: $0 backup-restore <backup_file> [--auto-start]"
             exit 1
         fi
         backup_file="$2"
+        auto_start="${3:-}"
+
         print_info "Restoring from backup: $backup_file"
         if ! python3 lib/backup_manager.py restore "$backup_file"; then
             print_error "Backup restore failed"
             exit 1
         fi
+
+        # Auto-start services if requested
+        if [ "$auto_start" = "--auto-start" ]; then
+            print_info "Auto-starting services after restore..."
+            if ! docker compose up -d; then
+                print_warning "Failed to auto-start services. You may need to start them manually."
+            else
+                print_status "Services started successfully"
+            fi
+        fi
+
         print_status "Backup restored successfully"
         ;;
     backup-list)
