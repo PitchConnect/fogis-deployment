@@ -915,11 +915,83 @@ setup_legacy_credentials() {
     log_info "Using legacy configuration mode..."
 }
 
+# Function to attempt credential restoration from backup
+attempt_credential_restoration() {
+    log_info "Checking for existing FOGIS credential backups..."
+
+    # Check if restoration script exists
+    if [[ ! -f "restore_fogis_credentials.sh" ]]; then
+        log_warning "Credential restoration script not found"
+        return 1
+    fi
+
+    # Try to detect backup directories automatically
+    local backup_detected=$(./restore_fogis_credentials.sh --dry-run 2>/dev/null | grep "Auto-detected backup directory" | cut -d':' -f2 | xargs)
+
+    if [[ -n "$backup_detected" && -d "$backup_detected" ]]; then
+        log_success "Found FOGIS credential backup: $backup_detected"
+
+        if [[ "$AUTO_MODE" == "true" ]]; then
+            log_info "Auto-mode: Attempting automatic credential restoration..."
+            if ./restore_fogis_credentials.sh "$backup_detected" --auto --validate; then
+                log_success "FOGIS credentials restored successfully from backup!"
+                return 0
+            else
+                log_warning "Automatic credential restoration failed"
+                return 1
+            fi
+        else
+            echo ""
+            echo "🔐 CREDENTIAL RESTORATION DETECTED"
+            echo "=================================="
+            echo ""
+            echo "Found existing FOGIS credential backup:"
+            echo "  📁 $backup_detected"
+            echo ""
+            echo "This can automatically restore your FOGIS username and password,"
+            echo "eliminating the need to re-enter credentials during setup."
+            echo ""
+            read -p "Restore FOGIS credentials from backup? (Y/n): " -n 1 -r
+            echo
+
+            if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+                log_info "Restoring FOGIS credentials from backup..."
+                if ./restore_fogis_credentials.sh "$backup_detected" --auto --validate; then
+                    log_success "FOGIS credentials restored successfully!"
+                    return 0
+                else
+                    log_error "Credential restoration failed"
+                    echo ""
+                    echo "📋 You can try manual restoration later with:"
+                    echo "   ./restore_fogis_credentials.sh \"$backup_detected\""
+                    echo ""
+                    return 1
+                fi
+            else
+                log_info "Skipping credential restoration"
+                return 1
+            fi
+        fi
+    else
+        log_info "No FOGIS credential backups detected"
+        return 1
+    fi
+}
+
 # Enhanced credential setup using the existing wizard
 setup_credentials() {
     log_step "8/8: Credential Configuration"
 
     log_info "Setting up authentication credentials..."
+
+    # First, attempt to restore credentials from backup
+    if attempt_credential_restoration; then
+        log_success "Credentials configured via backup restoration"
+        save_progress "credentials_configured"
+        return 0
+    fi
+
+    log_info "Proceeding with interactive credential setup..."
 
     # Detect configuration mode
     local config_mode=$(detect_config_mode)

@@ -1,0 +1,202 @@
+{
+  "timestamp": "2025-07-15T16:34:09.640617",
+  "overall_status": "critical",
+  "services": {
+    "calendar_sync": {
+      "status": "healthy",
+      "status_code": 200,
+      "response_time": 0.053,
+      "endpoint": "http://localhost:9083/health",
+      "last_check": "2025-07-15T16:34:09.693994",
+      "details": {
+        "message": "token.json not found, may need authentication",
+        "status": "warning"
+      }
+    },
+    "google_drive": {
+      "status": "healthy",
+      "status_code": 200,
+      "response_time": 0.059,
+      "endpoint": "http://localhost:9085/health",
+      "last_check": "2025-07-15T16:34:09.752692",
+      "details": {
+        "api_connectivity": false,
+        "api_response_time_ms": 0.73,
+        "auth_status": "unauthenticated",
+        "message": "Authentication required. Visit /authorize_gdrive to authenticate.",
+        "reason": "auth_required",
+        "service": "google-drive-service",
+        "status": "degraded",
+        "timestamp": 1752590049.7382832,
+        "version": "2025.07.0"
+      }
+    },
+    "match_list_processor": {
+      "status": "down",
+      "error": "Connection refused",
+      "endpoint": "http://localhost:8082/health",
+      "last_check": "2025-07-15T16:34:09.754498"
+    },
+    "team_logo_combiner": {
+      "status": "down",
+      "error": "Connection refused",
+      "endpoint": "http://localhost:8083/health",
+      "last_check": "2025-07-15T16:34:09.758238"
+    },
+    "whatsapp_avatar_automation": {
+      "status": "down",
+      "error": "Connection refused",
+      "endpoint": "http://localhost:8084/health",
+      "last_check": "2025-07-15T16:34:09.760760"
+    },
+    "match_list_change_detector": {
+      "status": "down",
+      "error": "Connection refused",
+      "endpoint": "http://localhost:8085/health",
+      "last_check": "2025-07-15T16:34:09.762396"
+    }
+  },
+  "system": {
+    "cpu": {
+      "usage_percent": 37.6,
+      "status": "healthy",
+      "cores": 8
+    },
+    "memory": {
+      "usage_percent": 82.8,
+      "total_gb": 8.0,
+      "available_gb": 1.38,
+      "status": "healthy"
+    },
+    "disk": {
+      "usage_percent": 6.05,
+      "total_gb": 228.27,
+      "free_gb": 117.0,
+      "status": "healthy"
+    },
+    "network": {
+      "bytes_sent": 4311620608,
+      "bytes_recv": 1613343744,
+      "packets_sent": 249715766,
+      "packets_recv": 163498583
+    },
+    "load_average": {
+      "1min": 4.39,
+      "5min": 5.25,
+      "15min": 5.06
+    }
+  },
+  "docker": {
+    "status": "healthy",
+    "daemon_running": true,
+    "containers": [
+      {
+        "name": "match-list-processor",
+        "image": "ghcr.io/pitchconnect/match-list-processor:latest",
+        "status": "Restarting (0) 41 seconds ago",
+        "ports": ""
+      },
+      {
+        "name": "match-list-change-detector",
+        "image": "fogis-deployment-match-list-change-detector",
+        "status": "Up 4 hours (unhealthy)",
+        "ports": "0.0.0.0:9080->8080/tcp, [::]:9080->8080/tcp, 0.0.0.0:9081->8081/tcp, [::]:9081->8081/tcp"
+      },
+      {
+        "name": "team-logo-combiner",
+        "image": "ghcr.io/pitchconnect/team-logo-combiner:latest",
+        "status": "Up 4 days (healthy)",
+        "ports": "0.0.0.0:9088->5002/tcp, [::]:9088->5002/tcp"
+      },
+      {
+        "name": "fogis-api-client-service",
+        "image": "ghcr.io/pitchconnect/fogis-api-client:latest",
+        "status": "Up 20 hours (healthy)",
+        "ports": "0.0.0.0:9086->8080/tcp, [::]:9086->8080/tcp"
+      },
+      {
+        "name": "fogis-calendar-phonebook-sync",
+        "image": "ghcr.io/pitchconnect/fogis-calendar-phonebook-sync:latest",
+        "status": "Up 4 days (healthy)",
+        "ports": "0.0.0.0:9083->5003/tcp, [::]:9083->5003/tcp, 0.0.0.0:9084->8080/tcp, [::]:9084->8080/tcp, 0.0.0.0:9087->8090/tcp, [::]:9087->8090/tcp"
+      },
+      {
+        "name": "google-drive-service",
+        "image": "ghcr.io/pitchconnect/google-drive-service:latest",
+        "status": "Up 4 days (healthy)",
+        "ports": "0.0.0.0:9085->5000/tcp, [::]:9085->5000/tcp"
+      },
+      {
+        "name": "intelligent_poincare",
+        "image": "ghcr.io/github/github-mcp-server",
+        "status": "Up 5 days",
+        "ports": ""
+      },
+      {
+        "name": "heimdall",
+        "image": "lscr.io/linuxserver/heimdall:latest",
+        "status": "Up 8 days",
+        "ports": "80/tcp, 443/tcp"
+      },
+      {
+        "name": "pihole",
+        "image": "pihole/pihole:latest",
+        "status": "Up 8 days (healthy)",
+        "ports": "67/udp, 0.0.0.0:53->53/tcp, 0.0.0.0:53->53/udp, 123/udp, 443/tcp, 0.0.0.0:8088->80/tcp"
+      },
+      {
+        "name": "authelia",
+        "image": "authelia/authelia:latest",
+        "status": "Up 8 days (healthy)",
+        "ports": "0.0.0.0:9091->9091/tcp"
+      },
+      {
+        "name": "portainer",
+        "image": "portainer/portainer-ce:latest",
+        "status": "Up 8 days",
+        "ports": "8000/tcp, 9443/tcp, 0.0.0.0:9000->9000/tcp"
+      },
+      {
+        "name": "portainer_agent",
+        "image": "portainer/agent:latest",
+        "status": "Up 8 days",
+        "ports": "0.0.0.0:9001->9001/tcp"
+      },
+      {
+        "name": "watchtower",
+        "image": "containrrr/watchtower:latest",
+        "status": "Restarting (1) 55 seconds ago",
+        "ports": ""
+      },
+      {
+        "name": "dozzle",
+        "image": "amir20/dozzle:latest",
+        "status": "Up 8 days",
+        "ports": "8080/tcp"
+      },
+      {
+        "name": "uptime-kuma",
+        "image": "louislam/uptime-kuma:latest",
+        "status": "Up 8 days (healthy)",
+        "ports": "3001/tcp"
+      },
+      {
+        "name": "cloudflared",
+        "image": "cloudflare/cloudflared:latest",
+        "status": "Up 8 days",
+        "ports": ""
+      },
+      {
+        "name": "traefik",
+        "image": "traefik:v2.10",
+        "status": "Up 8 days",
+        "ports": "0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp, 0.0.0.0:9086->8080/tcp"
+      }
+    ],
+    "compose": {
+      "status": "error",
+      "error": "Docker Compose not available"
+    }
+  },
+  "issues": []
+}

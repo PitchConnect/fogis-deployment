@@ -1,10 +1,17 @@
 version: '3.8'
 
+# Load environment variables from .env file
+# This ensures FOGIS credentials and other configuration are properly loaded
+x-env-file: &env-file
+  env_file:
+    - .env
+
 services:
   # FOGIS API Client Service - centralized API access
   fogis-api-client-service:
     image: ghcr.io/pitchconnect/fogis-api-client:latest
     container_name: fogis-api-client-service
+    <<: *env-file
     environment:
       - FOGIS_USERNAME=${FOGIS_USERNAME}
       - FOGIS_PASSWORD=${FOGIS_PASSWORD}
@@ -27,10 +34,12 @@ services:
 
   # Core orchestration service - runs as persistent service with internal scheduling
   match-list-change-detector:
+    # image: ghcr.io/pitchconnect/match-list-change-detector:latest
     build:
       context: local-patches/match-list-change-detector
       dockerfile: Dockerfile.patched
     container_name: match-list-change-detector
+    <<: *env-file
     environment:
       - FOGIS_USERNAME=${FOGIS_USERNAME}
       - FOGIS_PASSWORD=${FOGIS_PASSWORD}
@@ -39,7 +48,7 @@ services:
       - HEALTH_SERVER_HOST=0.0.0.0
       - PROMETHEUS_PORT=8081
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - WEBHOOK_URL=${WEBHOOK_URL:-http://match-list-processor:5000/process}
+      - WEBHOOK_URL=${WEBHOOK_URL:-http://match-list-processor:8000/process}
       - RUN_MODE=service
       - CRON_SCHEDULE=${MATCH_DETECTOR_CRON_SCHEDULE:-0 * * * *}
     volumes:
@@ -54,7 +63,7 @@ services:
     depends_on:
       - fogis-api-client-service
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -64,24 +73,27 @@ services:
       - "cron.schedule=0 * * * *"  # Every hour
       - "cron.command=python main.py"
 
-  # Match list processor - triggered by change detector
+  # Match list processor - event-driven service waiting for webhook triggers
   match-list-processor:
     image: ghcr.io/pitchconnect/match-list-processor:latest
+    # build:
+    #   context: local-patches/match-list-processor
+    #   dockerfile: Dockerfile.patched
     container_name: match-list-processor
     environment:
       - FOGIS_API_CLIENT_URL=http://fogis-api-client-service:8080
       - CALENDAR_SYNC_URL=http://fogis-calendar-phonebook-sync:5003/sync
       - LOGO_COMBINER_URL=http://team-logo-combiner:5000/combine
-      - GOOGLE_DRIVE_URL=http://google-drive-service:5000  # Add missing Google Drive URL
+      - GOOGLE_DRIVE_URL=http://google-drive-service:5000
       - LOG_LEVEL=INFO
-      - FORCE_FRESH_PROCESSING=true  # Enable fresh processing for testing
-      - RUN_MODE=oneshot              # Use oneshot mode to avoid circular import issue
-      - SERVICE_INTERVAL=300          # 5-minute processing intervals
+      - FORCE_FRESH_PROCESSING=false  # Disable for event-driven processing
+      - RUN_MODE=service              # Run as persistent service waiting for webhooks
+      - SERVICE_INTERVAL=3600         # Fallback interval (1 hour) for health checks only
     volumes:
       - ./data/match-list-processor:/app/data
       - ./logs/match-list-processor:/app/logs
     ports:
-      - "9082:8000"  # Health endpoint (corrected port)
+      - "9082:8000"  # Health and webhook endpoints
     networks:
       - fogis-network
     restart: unless-stopped
@@ -100,14 +112,15 @@ services:
   fogis-calendar-phonebook-sync:
     image: ghcr.io/pitchconnect/fogis-calendar-phonebook-sync:latest
     container_name: fogis-calendar-phonebook-sync
+    <<: *env-file
     networks:
       fogis-network:
         aliases:
           - fogis-sync  # Alias for backward compatibility
     environment:
-      - FOGIS_USERNAME=Bartek Svaberg
-      - FOGIS_PASSWORD=temporary
-      - USER_REFEREE_NUMBER=12345  # Replace with actual referee number
+      - FOGIS_USERNAME=${FOGIS_USERNAME}
+      - FOGIS_PASSWORD=${FOGIS_PASSWORD}
+      - USER_REFEREE_NUMBER=${USER_REFEREE_NUMBER:-12345}
       - GOOGLE_CREDENTIALS_PATH=/app/credentials/google-credentials.json
       - LOG_LEVEL=INFO
     volumes:

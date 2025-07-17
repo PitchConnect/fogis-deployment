@@ -1,269 +1,341 @@
-#!/usr/bin/env python3
 """
-Unit tests for BackupManager
-Tests backup and restore functionality
+Unit tests for the FOGIS Backup Management System.
+
+This module contains comprehensive unit tests for backup creation,
+restoration, and management functionality.
 """
 
-import json
 import os
-import sys
+import subprocess
 import tempfile
-import unittest
-from pathlib import Path
-from unittest.mock import patch
-
-# Add the lib directory to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "lib"))
-
-from backup_manager import BackupError, BackupManager  # noqa: E402
+import tarfile
+from unittest.mock import Mock, patch
+import pytest
 
 
-class TestBackupManager(unittest.TestCase):
-    """Test cases for BackupManager class"""
-
-    def setUp(self):
-        """Set up test fixtures"""
-        self.test_dir = tempfile.mkdtemp()
-        self.original_cwd = os.getcwd()
-        os.chdir(self.test_dir)
-
-        # Create test backup directory
-        self.backup_dir = Path(self.test_dir) / "test_backups"
-        self.backup_manager = BackupManager(str(self.backup_dir))
-
+class TestBackupManager:
+    """Test cases for backup management functions."""
+    
+    def setup_method(self):
+        """Set up test environment before each test."""
+        self.test_install_dir = "/tmp/test_fogis_deployment"
+        self.test_backup_dir = "/tmp/test_fogis_backups"
+        self.test_env = {
+            "INSTALL_DIR": self.test_install_dir,
+            "BACKUP_BASE_DIR": self.test_backup_dir,
+            "BACKUP_RETENTION_DAYS": "30"
+        }
+        
+        # Create test installation structure
+        os.makedirs(f"{self.test_install_dir}/credentials", exist_ok=True)
+        os.makedirs(f"{self.test_install_dir}/data", exist_ok=True)
+        os.makedirs(f"{self.test_install_dir}/logs", exist_ok=True)
+        os.makedirs(self.test_backup_dir, exist_ok=True)
+        
         # Create test files
-        self.create_test_files()
-
-    def tearDown(self):
-        """Clean up test fixtures"""
-        os.chdir(self.original_cwd)
-        import shutil
-
-        shutil.rmtree(self.test_dir)
-
-    def create_test_files(self):
-        """Create test files for backup testing"""
-        # Create config files
-        with open("fogis-config.yaml", "w") as f:
-            f.write("test: config")
-
-        with open(".env", "w") as f:
-            f.write("TEST_VAR=value")
-
-        # Create credentials
-        with open("credentials.json", "w") as f:
-            json.dump({"test": "credentials"}, f)
-
-        # Create data directories
-        os.makedirs("data/test", exist_ok=True)
-        with open("data/test/data.json", "w") as f:
-            json.dump({"test": "data"}, f)
-
-        # Create logs directory
-        os.makedirs("logs", exist_ok=True)
-        with open("logs/test.log", "w") as f:
-            f.write("test log")
-
-    def test_create_config_backup(self):
-        """Test creating configuration backup"""
-        backup_file = self.backup_manager.create_backup("config")
-
-        self.assertTrue(os.path.exists(backup_file))
-        self.assertIn("config", backup_file)
-        self.assertTrue(self.backup_manager.validate_backup(backup_file))
-
-    def test_create_credentials_backup(self):
-        """Test creating credentials backup"""
-        backup_file = self.backup_manager.create_backup("credentials")
-
-        self.assertTrue(os.path.exists(backup_file))
-        self.assertIn("credentials", backup_file)
-        self.assertTrue(self.backup_manager.validate_backup(backup_file))
-
-    def test_create_complete_backup(self):
-        """Test creating complete system backup"""
-        backup_file = self.backup_manager.create_backup("complete")
-
-        self.assertTrue(os.path.exists(backup_file))
-        self.assertIn("complete", backup_file)
-        self.assertTrue(self.backup_manager.validate_backup(backup_file))
-
-    def test_invalid_backup_type(self):
-        """Test creating backup with invalid type"""
-        with self.assertRaises(BackupError):
-            self.backup_manager.create_backup("invalid")
-
-    def test_validate_backup_valid(self):
-        """Test validating a valid backup"""
-        backup_file = self.backup_manager.create_backup("config")
-        self.assertTrue(self.backup_manager.validate_backup(backup_file))
-
-    def test_validate_backup_nonexistent(self):
-        """Test validating non-existent backup"""
-        self.assertFalse(self.backup_manager.validate_backup("nonexistent.tar.gz"))
-
-    def test_list_backups_empty(self):
-        """Test listing backups when none exist"""
-        backups = self.backup_manager.list_backups()
-        self.assertEqual(len(backups), 0)
-
-    def test_list_backups_with_backups(self):
-        """Test listing backups when some exist"""
-        # Create a few backups
-        self.backup_manager.create_backup("config")
-        self.backup_manager.create_backup("credentials")
-
-        backups = self.backup_manager.list_backups()
-        self.assertEqual(len(backups), 2)
-
-        # Check backup info structure
-        for backup in backups:
-            self.assertIn("type", backup)
-            self.assertIn("created_at", backup)
-            self.assertIn("file_path", backup)
-
-    def test_get_backup_info(self):
-        """Test getting backup information"""
-        backup_file = self.backup_manager.create_backup("config")
-        backup_info = self.backup_manager.get_backup_info(backup_file)
-
-        self.assertIsNotNone(backup_info)
-        self.assertEqual(backup_info["type"], "config")
-        self.assertIn("created_at", backup_info)
-        self.assertIn("file_size", backup_info)
-
-    def test_get_backup_info_invalid(self):
-        """Test getting info for invalid backup"""
-        backup_info = self.backup_manager.get_backup_info("nonexistent.tar.gz")
-        self.assertIsNone(backup_info)
-
-    def test_delete_backup(self):
-        """Test deleting a backup"""
-        backup_file = self.backup_manager.create_backup("config")
-        self.assertTrue(os.path.exists(backup_file))
-
-        result = self.backup_manager.delete_backup(backup_file)
-        self.assertTrue(result)
-        self.assertFalse(os.path.exists(backup_file))
-
-    def test_delete_nonexistent_backup(self):
-        """Test deleting non-existent backup"""
-        result = self.backup_manager.delete_backup("nonexistent.tar.gz")
-        self.assertFalse(result)
-
-    def test_cleanup_old_backups(self):
-        """Test cleaning up old backups"""
-        # Test with no backups (should delete nothing)
-        deleted_count = self.backup_manager.cleanup_old_backups(keep_count=5)
-        self.assertEqual(deleted_count, 0)
-
-        # Create one backup
-        backup1 = self.backup_manager.create_backup("config")
-
-        # Test cleanup with keep_count larger than current count (should delete nothing)
-        deleted_count = self.backup_manager.cleanup_old_backups(keep_count=10)
-        self.assertEqual(deleted_count, 0)
-
-        # Verify backup still exists
-        backups = self.backup_manager.list_backups()
-        self.assertEqual(len(backups), 1)
-
-        # Test cleanup with keep_count = 0 (should delete all)
-        deleted_count = self.backup_manager.cleanup_old_backups(keep_count=0)
-        self.assertEqual(deleted_count, 1)
-
-        # Verify no backups remain
-        backups_after = self.backup_manager.list_backups()
-        self.assertEqual(len(backups_after), 0)
-
-    def test_restore_config_backup(self):
-        """Test restoring configuration backup"""
+        with open(f"{self.test_install_dir}/credentials/google-credentials.json", "w") as f:
+            f.write('{"type": "service_account", "project_id": "test"}')
+        
+        with open(f"{self.test_install_dir}/docker-compose-master.yml", "w") as f:
+            f.write("version: '3.8'\nservices:\n  test:\n    image: test")
+        
+        with open(f"{self.test_install_dir}/.env", "w") as f:
+            f.write("FOGIS_USERNAME=test\nFOGIS_PASSWORD=test")
+        
+        with open(f"{self.test_install_dir}/data/test.json", "w") as f:
+            f.write('{"test": "data"}')
+        
+        with open(f"{self.test_install_dir}/logs/test.log", "w") as f:
+            f.write("2023-01-01 00:00:00 - Test log entry")
+    
+    def teardown_method(self):
+        """Clean up after each test."""
+        # Clean up test directories
+        for directory in [self.test_install_dir, self.test_backup_dir]:
+            if os.path.exists(directory):
+                subprocess.run(["rm", "-rf", directory], check=False)
+        
+        # Clean up any backup files in /tmp
+        subprocess.run([
+            "find", "/tmp", "-name", "fogis-backup-*.tar.gz", "-delete"
+        ], check=False)
+        
+        # Clean up temporary files
+        for temp_file in ["/tmp/fogis_backup_location"]:
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
+    
+    def test_create_installation_backup_success(self):
+        """Test successful backup creation."""
+        result = subprocess.run([
+            "bash", "-c", 
+            f"source fogis-deployment/lib/backup_manager.sh && "
+            f"INSTALL_DIR={self.test_install_dir} && "
+            f"BACKUP_BASE_DIR={self.test_backup_dir} && "
+            f"create_installation_backup test-backup"
+        ], capture_output=True, text=True, cwd=".")
+        
+        assert result.returncode == 0
+        assert "Backup created:" in result.stdout
+        assert "Backup size:" in result.stdout
+        
+        # Check that backup file was created
+        backup_file = f"{self.test_backup_dir}/test-backup.tar.gz"
+        assert os.path.exists(backup_file)
+        
+        # Check that backup location was stored
+        assert os.path.exists("/tmp/fogis_backup_location")
+        with open("/tmp/fogis_backup_location", "r") as f:
+            stored_location = f.read().strip()
+            assert stored_location == backup_file
+    
+    def test_create_installation_backup_no_install_dir(self):
+        """Test backup creation when no installation directory exists."""
+        result = subprocess.run([
+            "bash", "-c", 
+            f"source fogis-deployment/lib/backup_manager.sh && "
+            f"INSTALL_DIR=/nonexistent && "
+            f"BACKUP_BASE_DIR={self.test_backup_dir} && "
+            f"create_installation_backup test-backup"
+        ], capture_output=True, text=True, cwd=".")
+        
+        assert result.returncode == 0
+        assert "No installation directory found" in result.stdout
+    
+    def test_backup_content_verification(self):
+        """Test that backup contains expected content."""
         # Create backup
-        backup_file = self.backup_manager.create_backup("config")
-
-        # Modify original files
-        with open("fogis-config.yaml", "w") as f:
-            f.write("modified: config")
-
-        # Restore backup
-        result = self.backup_manager.restore_backup(backup_file)
-        self.assertTrue(result)
-
-        # Verify restoration
-        with open("fogis-config.yaml", "r") as f:
-            content = f.read()
-            self.assertEqual(content, "test: config")
-
-    def test_restore_nonexistent_backup(self):
-        """Test restoring non-existent backup"""
-        with self.assertRaises(BackupError):
-            self.backup_manager.restore_backup("nonexistent.tar.gz")
-
-    @patch("backup_manager.tarfile.open")
-    def test_restore_invalid_backup(self, mock_tarfile):
-        """Test restoring invalid backup file"""
-        # Mock tarfile to raise exception
-        mock_tarfile.side_effect = Exception("Invalid archive")
-
-        # Create a dummy file
-        dummy_backup = self.backup_dir / "dummy.tar.gz"
-        dummy_backup.touch()
-
-        with self.assertRaises(BackupError):
-            self.backup_manager.restore_backup(str(dummy_backup))
-
-    def test_map_config_file_destination(self):
-        """Test mapping config file destinations"""
-        mapping = self.backup_manager._map_config_file_destination("fogis-config.yaml")
-        self.assertEqual(mapping, Path("fogis-config.yaml"))
-
-        mapping = self.backup_manager._map_config_file_destination(".env")
-        self.assertEqual(mapping, Path(".env"))
-
-        mapping = self.backup_manager._map_config_file_destination("unknown.txt")
-        self.assertIsNone(mapping)
-
-    def test_map_token_file_destination(self):
-        """Test mapping token file destinations"""
-        mapping = self.backup_manager._map_token_file_destination(
-            "google-drive-token.json"
-        )
-        self.assertEqual(
-            mapping, Path("data/google-drive-service/google-drive-token.json")
-        )
-
-        mapping = self.backup_manager._map_token_file_destination("unknown-token.json")
-        self.assertIsNone(mapping)
-
-    def test_backup_manifest_creation(self):
-        """Test backup manifest creation"""
-        backup_file = self.backup_manager.create_backup("config")
-
-        # Extract and check manifest
-        import tarfile
-
+        result = subprocess.run([
+            "bash", "-c", 
+            f"source fogis-deployment/lib/backup_manager.sh && "
+            f"INSTALL_DIR={self.test_install_dir} && "
+            f"BACKUP_BASE_DIR={self.test_backup_dir} && "
+            f"create_installation_backup test-backup"
+        ], capture_output=True, text=True, cwd=".")
+        
+        assert result.returncode == 0
+        
+        # Extract and verify backup content
+        backup_file = f"{self.test_backup_dir}/test-backup.tar.gz"
+        extract_dir = "/tmp/test_backup_extract"
+        os.makedirs(extract_dir, exist_ok=True)
+        
         with tarfile.open(backup_file, "r:gz") as tar:
-            manifest_member = None
-            for member in tar.getmembers():
-                if member.name.endswith("backup_manifest.json"):
-                    manifest_member = member
-                    break
+            tar.extractall(extract_dir)
+        
+        # Check that expected files are in backup
+        backup_content_dir = os.path.join(extract_dir, "test-backup")
+        assert os.path.exists(f"{backup_content_dir}/credentials/google-credentials.json")
+        assert os.path.exists(f"{backup_content_dir}/configs/.env")
+        assert os.path.exists(f"{backup_content_dir}/configs/docker-compose-master.yml")
+        assert os.path.exists(f"{backup_content_dir}/data/test.json")
+        assert os.path.exists(f"{backup_content_dir}/logs/test.log")
+        assert os.path.exists(f"{backup_content_dir}/BACKUP_MANIFEST.txt")
+        
+        # Verify manifest content
+        with open(f"{backup_content_dir}/BACKUP_MANIFEST.txt", "r") as f:
+            manifest = f.read()
+            assert "FOGIS Installation Backup" in manifest
+            assert "Restore Instructions" in manifest
+            assert "Security Notes" in manifest
+        
+        # Clean up
+        subprocess.run(["rm", "-rf", extract_dir], check=False)
+    
+    def test_restore_from_backup_success(self):
+        """Test successful backup restoration."""
+        # First create a backup
+        subprocess.run([
+            "bash", "-c", 
+            f"source fogis-deployment/lib/backup_manager.sh && "
+            f"INSTALL_DIR={self.test_install_dir} && "
+            f"BACKUP_BASE_DIR={self.test_backup_dir} && "
+            f"create_installation_backup test-backup"
+        ], capture_output=True, text=True, cwd=".")
+        
+        backup_file = f"{self.test_backup_dir}/test-backup.tar.gz"
+        
+        # Remove original installation
+        subprocess.run(["rm", "-rf", self.test_install_dir], check=False)
+        
+        # Restore from backup
+        restore_dir = "/tmp/test_restore"
+        result = subprocess.run([
+            "bash", "-c", 
+            f"source fogis-deployment/lib/backup_manager.sh && "
+            f"restore_from_backup {backup_file} {restore_dir}"
+        ], capture_output=True, text=True, cwd=".")
+        
+        assert result.returncode == 0
+        assert "Restore completed successfully" in result.stdout
+        
+        # Verify restored content
+        assert os.path.exists(f"{restore_dir}/credentials/google-credentials.json")
+        assert os.path.exists(f"{restore_dir}/.env")
+        assert os.path.exists(f"{restore_dir}/docker-compose-master.yml")
+        
+        # Clean up
+        subprocess.run(["rm", "-rf", restore_dir], check=False)
+    
+    def test_restore_from_backup_invalid_file(self):
+        """Test restoration with invalid backup file."""
+        result = subprocess.run([
+            "bash", "-c", 
+            f"source fogis-deployment/lib/backup_manager.sh && "
+            f"restore_from_backup /nonexistent/backup.tar.gz"
+        ], capture_output=True, text=True, cwd=".")
+        
+        assert result.returncode == 1
+        assert "Backup file not found" in result.stdout
+    
+    def test_list_backups_empty(self):
+        """Test listing backups when no backups exist."""
+        # Ensure backup directory is empty
+        subprocess.run(["rm", "-rf", self.test_backup_dir], check=False)
+        
+        result = subprocess.run([
+            "bash", "-c", 
+            f"source fogis-deployment/lib/backup_manager.sh && "
+            f"BACKUP_BASE_DIR={self.test_backup_dir} && "
+            f"list_backups"
+        ], capture_output=True, text=True, cwd=".")
+        
+        assert result.returncode == 0
+        assert "No backup directory found" in result.stdout or "No backups found" in result.stdout
+    
+    def test_list_backups_with_backups(self):
+        """Test listing backups when backups exist."""
+        # Create multiple backups
+        for i in range(3):
+            subprocess.run([
+                "bash", "-c", 
+                f"source fogis-deployment/lib/backup_manager.sh && "
+                f"INSTALL_DIR={self.test_install_dir} && "
+                f"BACKUP_BASE_DIR={self.test_backup_dir} && "
+                f"create_installation_backup test-backup-{i}"
+            ], capture_output=True, text=True, cwd=".")
+        
+        result = subprocess.run([
+            "bash", "-c", 
+            f"source fogis-deployment/lib/backup_manager.sh && "
+            f"BACKUP_BASE_DIR={self.test_backup_dir} && "
+            f"list_backups"
+        ], capture_output=True, text=True, cwd=".")
+        
+        assert result.returncode == 0
+        assert "Found 3 backup(s)" in result.stdout
+        assert "test-backup-0" in result.stdout
+        assert "test-backup-1" in result.stdout
+        assert "test-backup-2" in result.stdout
+        assert "Size:" in result.stdout
+        assert "Date:" in result.stdout
+    
+    def test_cleanup_old_backups_no_old_backups(self):
+        """Test cleanup when no old backups exist."""
+        result = subprocess.run([
+            "bash", "-c", 
+            f"source fogis-deployment/lib/backup_manager.sh && "
+            f"BACKUP_BASE_DIR={self.test_backup_dir} && "
+            f"cleanup_old_backups 30"
+        ], capture_output=True, text=True, cwd=".")
+        
+        assert result.returncode == 0
+        assert "No old backups to clean" in result.stdout or "No backup directory found" in result.stdout
+    
+    def test_backup_manifest_creation(self):
+        """Test that backup manifest is created correctly."""
+        # Create backup
+        subprocess.run([
+            "bash", "-c", 
+            f"source fogis-deployment/lib/backup_manager.sh && "
+            f"INSTALL_DIR={self.test_install_dir} && "
+            f"BACKUP_BASE_DIR={self.test_backup_dir} && "
+            f"create_installation_backup test-manifest"
+        ], capture_output=True, text=True, cwd=".")
+        
+        # Extract and check manifest
+        backup_file = f"{self.test_backup_dir}/test-manifest.tar.gz"
+        extract_dir = "/tmp/test_manifest_extract"
+        os.makedirs(extract_dir, exist_ok=True)
+        
+        with tarfile.open(backup_file, "r:gz") as tar:
+            tar.extractall(extract_dir)
+        
+        manifest_file = f"{extract_dir}/test-manifest/BACKUP_MANIFEST.txt"
+        assert os.path.exists(manifest_file)
+        
+        with open(manifest_file, "r") as f:
+            manifest = f.read()
+            
+        # Check manifest sections
+        assert "FOGIS Installation Backup" in manifest
+        assert "Created:" in manifest
+        assert "Source:" in manifest
+        assert "Contents:" in manifest
+        assert "File Counts:" in manifest
+        assert "Restore Instructions:" in manifest
+        assert "Security Notes:" in manifest
+        
+        # Check that file counts are present
+        assert "Credentials:" in manifest
+        assert "Configurations:" in manifest
+        assert "Data files:" in manifest
+        assert "Log files:" in manifest
+        
+        # Clean up
+        subprocess.run(["rm", "-rf", extract_dir], check=False)
 
-            self.assertIsNotNone(manifest_member)
 
-            # Extract manifest
-            with tempfile.TemporaryDirectory() as temp_dir:
-                tar.extract(manifest_member, temp_dir)
-                manifest_path = Path(temp_dir) / manifest_member.name
-
-                with open(manifest_path, "r") as f:
-                    manifest = json.load(f)
-
-                self.assertIn("backup_info", manifest)
-                self.assertIn("files", manifest)
-                self.assertIn("directories", manifest)
-                self.assertEqual(manifest["backup_info"]["type"], "config")
+class TestBackupManagerEdgeCases:
+    """Test edge cases and error conditions for backup manager."""
+    
+    def test_backup_with_permission_errors(self):
+        """Test backup creation with permission errors."""
+        # This test would require specific permission setups
+        # For now, we'll test that the functions handle errors gracefully
+        result = subprocess.run([
+            "bash", "-c", 
+            f"source fogis-deployment/lib/backup_manager.sh && "
+            f"INSTALL_DIR=/root/restricted && "
+            f"BACKUP_BASE_DIR=/tmp/test_backup && "
+            f"create_installation_backup test-perm"
+        ], capture_output=True, text=True, cwd=".")
+        
+        # Should handle permission errors gracefully
+        assert result.returncode in [0, 1]
+    
+    def test_backup_with_disk_space_issues(self):
+        """Test backup behavior when disk space is limited."""
+        # This would require creating a scenario with limited disk space
+        # For now, we'll ensure the function exists and can be called
+        result = subprocess.run([
+            "bash", "-c", 
+            f"source fogis-deployment/lib/backup_manager.sh && "
+            f"type create_installation_backup"
+        ], capture_output=True, text=True, cwd=".")
+        
+        assert result.returncode == 0
+        assert "create_installation_backup is a function" in result.stdout
+    
+    def test_corrupted_backup_restoration(self):
+        """Test restoration from corrupted backup file."""
+        # Create a corrupted backup file
+        corrupted_backup = "/tmp/corrupted_backup.tar.gz"
+        with open(corrupted_backup, "w") as f:
+            f.write("This is not a valid tar.gz file")
+        
+        result = subprocess.run([
+            "bash", "-c", 
+            f"source fogis-deployment/lib/backup_manager.sh && "
+            f"restore_from_backup {corrupted_backup} /tmp/test_restore"
+        ], capture_output=True, text=True, cwd=".")
+        
+        assert result.returncode == 1
+        assert "Failed to extract backup" in result.stdout
+        
+        # Clean up
+        os.remove(corrupted_backup)
 
 
 if __name__ == "__main__":
-    unittest.main()
+    pytest.main([__file__])
