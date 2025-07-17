@@ -1,0 +1,67 @@
+{
+  "timestamp": "2025-07-17T18:05:52.202186",
+  "period": "last_24_hours",
+  "metrics": {
+    "current": {
+      "timestamp": "2025-07-17T18:05:52.202207",
+      "system": {
+        "cpu_percent": 21.4,
+        "memory_percent": 83.4,
+        "disk_percent": 6.051559555929764,
+        "network_io": {
+          "bytes_sent": 284383232,
+          "bytes_recv": 4223777792,
+          "packets_sent": 265520151,
+          "packets_recv": 171141519,
+          "errin": 0,
+          "errout": 0,
+          "dropin": 0,
+          "dropout": 0
+        },
+        "disk_io": {
+          "read_count": 871303312,
+          "write_count": 360359959,
+          "read_bytes": 30895520408064,
+          "write_bytes": 18099762630656,
+          "read_time": 199415778,
+          "write_time": 25201380
+        }
+      },
+      "services": {
+        "calendar_sync": {
+          "response_time": 0.036,
+          "status_code": 200,
+          "available": true
+        },
+        "google_drive": {
+          "response_time": null,
+          "status_code": null,
+          "available": false
+        },
+        "match_list_processor": {
+          "response_time": null,
+          "status_code": null,
+          "available": false
+        },
+        "team_logo_combiner": {
+          "response_time": null,
+          "status_code": null,
+          "available": false
+        },
+        "whatsapp_avatar_automation": {
+          "response_time": null,
+          "status_code": null,
+          "available": false
+        },
+        "match_list_change_detector": {
+          "response_time": null,
+          "status_code": null,
+          "available": false
+        }
+      },
+      "docker": {}
+    }
+  },
+  "trends": {},
+  "recommendations": []
+}

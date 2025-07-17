@@ -13,7 +13,7 @@ This implementation plan provides a detailed roadmap for integrating the portabl
 - **Enhanced OAuth wizard**: `lib/enhanced_oauth_wizard.py` with browser automation
 - **Multi-platform support**: `platform_manager.py`, headless deployment capabilities
 - **Robust testing framework**: Unit, integration, and e2e tests
-- **Docker orchestration**: `docker-compose-master.yml` with health checks
+- **Docker orchestration**: `docker-compose.yml` with health checks
 - **Installation safety**: Backup/restore, conflict detection, rollback capabilities
 
 #### ⚠️ **Current Configuration Approach**
@@ -27,7 +27,7 @@ This implementation plan provides a detailed roadmap for integrating the portabl
 2. **`configure_system.py`**: Interactive configuration collection (198 lines)
 3. **`manage_fogis_system.sh`**: System management commands (308 lines)
 4. **`lib/enhanced_oauth_wizard.py`**: OAuth automation
-5. **`docker-compose-master.yml`**: Service orchestration with environment variables
+5. **`docker-compose.yml`**: Service orchestration with environment variables
 
 ### Compatibility Analysis
 

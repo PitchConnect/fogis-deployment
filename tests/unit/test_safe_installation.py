@@ -63,7 +63,7 @@ class TestSafeInstallationIntegration:
         with open(f"{self.test_install_dir}/.env", "w") as f:
             f.write("FOGIS_USERNAME=test_user\nFOGIS_PASSWORD=test_pass")
         
-        with open(f"{self.test_install_dir}/docker-compose-master.yml", "w") as f:
+        with open(f"{self.test_install_dir}/docker-compose.yml", "w") as f:
             f.write("version: '3.8'\nservices:\n  test:\n    image: test")
         
         # Create mock data files
@@ -296,7 +296,7 @@ esac
         # Verify restored content
         assert os.path.exists(f"{self.test_install_dir}/credentials/google-credentials.json")
         assert os.path.exists(f"{self.test_install_dir}/.env")
-        assert os.path.exists(f"{self.test_install_dir}/docker-compose-master.yml")
+        assert os.path.exists(f"{self.test_install_dir}/docker-compose.yml")
         
         # Verify content integrity
         with open(f"{self.test_install_dir}/credentials/google-credentials.json", "r") as f:

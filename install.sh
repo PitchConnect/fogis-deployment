@@ -413,7 +413,7 @@ handle_headless_conflicts() {
 
     # Check for configuration files
     local has_config=false
-    if [[ -f "$INSTALL_DIR/.env" ]] || [[ -f "$INSTALL_DIR/docker-compose-master.yml" ]]; then
+    if [[ -f "$INSTALL_DIR/.env" ]] || [[ -f "$INSTALL_DIR/docker-compose.yml" ]]; then
         has_config=true
     fi
 

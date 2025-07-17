@@ -13,7 +13,7 @@ This document outlines a comprehensive portable configuration system for FOGIS d
 ### 1. Required Files Inventory
 
 #### Core Configuration Files
-- `docker-compose-master.yml` - Main orchestration file
+- `docker-compose.yml` - Main orchestration file
 - `.env` - Environment variables
 - `credentials.json` - Google OAuth client credentials
 - `config.json` - Service-specific configuration (calendar sync)
@@ -427,11 +427,11 @@ python3 generate-config.py
 
 # Step 3: Pull pre-built images (2-3 minutes)
 log_step "Pulling container images..."
-docker-compose -f docker-compose-master.yml pull
+docker-compose -f docker-compose.yml pull
 
 # Step 4: Start core services (1 minute)
 log_step "Starting core services..."
-docker-compose -f docker-compose-master.yml up -d fogis-api-client-service
+docker-compose -f docker-compose.yml up -d fogis-api-client-service
 
 # Step 5: OAuth authentication (5-8 minutes - user interaction)
 log_step "Starting OAuth authentication..."
@@ -439,7 +439,7 @@ python3 authenticate_all_services.py
 
 # Step 6: Start remaining services (2 minutes)
 log_step "Starting all services..."
-docker-compose -f docker-compose-master.yml up -d
+docker-compose -f docker-compose.yml up -d
 
 # Step 7: Health verification (1 minute)
 log_step "Verifying system health..."
@@ -908,7 +908,7 @@ chmod 600 .env
 ├── credentials.json               # USER PROVIDES (from Google Cloud)
 ├── .env                          # GENERATED (from user inputs)
 ├── fogis-config.yaml             # USER CUSTOMIZES (optional)
-├── docker-compose-master.yml     # FROM REPOSITORY
+├── docker-compose.yml     # FROM REPOSITORY
 ├── manage_fogis_system.sh        # FROM REPOSITORY
 └── [other repository files]      # FROM REPOSITORY
 ```

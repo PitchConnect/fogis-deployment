@@ -212,7 +212,7 @@ test_health_verification() {
     # Create mock installation for health check
     local test_dir="/tmp/test_health_$$"
     mkdir -p "$test_dir"
-    echo "version: '3.8'" > "$test_dir/docker-compose-master.yml"
+    echo "version: '3.8'" > "$test_dir/docker-compose.yml"
     echo "FOGIS_USERNAME=test" > "$test_dir/.env"
     chmod +x "$test_dir/manage_fogis_system.sh" 2>/dev/null || touch "$test_dir/manage_fogis_system.sh"
 

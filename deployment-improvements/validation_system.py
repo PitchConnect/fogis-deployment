@@ -175,10 +175,10 @@ class FOGISValidator:
                 )
             
             # Check Docker Compose
-            compose_file = self.project_root / "docker-compose-master.yml"
+            compose_file = self.project_root / "docker-compose.yml"
             if not compose_file.exists():
                 return ValidationResult(
-                    "docker_environment", False, "docker-compose-master.yml not found",
+                    "docker_environment", False, "docker-compose.yml not found",
                     (time.time() - start_time) * 1000
                 )
             

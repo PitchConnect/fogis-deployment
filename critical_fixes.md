@@ -37,7 +37,7 @@ EXPOSE 5002
 CMD ["python", "app.py"]
 ```
 
-## 2. docker-compose-master.yml Fixes
+## 2. docker-compose.yml Fixes
 
 **Problem**: Port conflicts and missing network aliases
 **Solution**: Fix team-logo-combiner configuration
@@ -78,7 +78,7 @@ CMD ["python", "app.py"]
 ## APPLY THESE FIXES AFTER FRESH CLONE:
 
 1. Update team-logo-combiner/Dockerfile with missing COPY commands
-2. Update docker-compose-master.yml with correct ports and network aliases
+2. Update docker-compose.yml with correct ports and network aliases
 3. Ensure Google Drive API is enabled in Google Cloud project
 4. Distribute authentication tokens to correct service locations
 

@@ -1,13 +1,13 @@
 {
-  "timestamp": "2025-07-17T18:08:12.105937",
+  "timestamp": "2025-07-17T18:05:41.380325",
   "overall_status": "critical",
   "services": {
     "calendar_sync": {
       "status": "healthy",
       "status_code": 200,
-      "response_time": 0.045,
+      "response_time": 0.028,
       "endpoint": "http://localhost:9083/health",
-      "last_check": "2025-07-17T18:08:12.151186",
+      "last_check": "2025-07-17T18:05:41.408775",
       "details": {
         "environment": "development",
         "status": "healthy",
@@ -15,74 +15,64 @@
       }
     },
     "google_drive": {
-      "status": "healthy",
-      "status_code": 200,
-      "response_time": 6.124,
+      "status": "down",
+      "error": "Connection refused",
       "endpoint": "http://localhost:9085/health",
-      "last_check": "2025-07-17T18:08:18.274911",
-      "details": {
-        "api_connectivity": true,
-        "api_response_time_ms": 5578.05,
-        "auth_status": "authenticated",
-        "service": "google-drive-service",
-        "status": "healthy",
-        "timestamp": 1752768492.1664839,
-        "version": "2025.07.0"
-      }
+      "last_check": "2025-07-17T18:05:41.411411"
     },
     "match_list_processor": {
       "status": "down",
       "error": "Connection refused",
       "endpoint": "http://localhost:8082/health",
-      "last_check": "2025-07-17T18:08:18.278309"
+      "last_check": "2025-07-17T18:05:41.412768"
     },
     "team_logo_combiner": {
       "status": "down",
       "error": "Connection refused",
       "endpoint": "http://localhost:8083/health",
-      "last_check": "2025-07-17T18:08:18.280796"
+      "last_check": "2025-07-17T18:05:41.414214"
     },
     "whatsapp_avatar_automation": {
       "status": "down",
       "error": "Connection refused",
       "endpoint": "http://localhost:8084/health",
-      "last_check": "2025-07-17T18:08:18.282818"
+      "last_check": "2025-07-17T18:05:41.416091"
     },
     "match_list_change_detector": {
       "status": "down",
       "error": "Connection refused",
       "endpoint": "http://localhost:8085/health",
-      "last_check": "2025-07-17T18:08:18.287738"
+      "last_check": "2025-07-17T18:05:41.417442"
     }
   },
   "system": {
     "cpu": {
-      "usage_percent": 17.8,
+      "usage_percent": 31.4,
       "status": "healthy",
       "cores": 8
     },
     "memory": {
-      "usage_percent": 80.3,
+      "usage_percent": 84.7,
       "total_gb": 8.0,
-      "available_gb": 1.58,
+      "available_gb": 1.23,
       "status": "healthy"
     },
     "disk": {
       "usage_percent": 6.05,
       "total_gb": 228.27,
-      "free_gb": 130.22,
+      "free_gb": 130.23,
       "status": "healthy"
     },
     "network": {
-      "bytes_sent": 296100864,
-      "bytes_recv": 4224746496,
-      "packets_sent": 265537703,
-      "packets_recv": 171149356
+      "bytes_sent": 283517952,
+      "bytes_recv": 4223660032,
+      "packets_sent": 265518720,
+      "packets_recv": 171140889
     },
     "load_average": {
-      "1min": 2.46,
-      "5min": 2.88,
-      "15min": 2.82
+      "1min": 3.6,
+      "5min": 3.25,
+      "15min": 2.92
     }
   },
   "docker": {
@@ -92,37 +82,37 @@
       {
         "name": "match-list-processor",
         "image": "ghcr.io/pitchconnect/match-list-processor:latest",
-        "status": "Restarting (1) 19 seconds ago",
-        "ports": ""
+        "status": "Up 3 seconds (health: starting)",
+        "ports": "0.0.0.0:9082->8000/tcp, [::]:9082->8000/tcp"
       },
       {
         "name": "match-list-change-detector",
         "image": "fogis-deployment-match-list-change-detector",
-        "status": "Up 2 minutes (healthy)",
+        "status": "Up 3 seconds (health: starting)",
         "ports": "0.0.0.0:9080->8080/tcp, [::]:9080->8080/tcp, 0.0.0.0:9081->8081/tcp, [::]:9081->8081/tcp"
       },
       {
         "name": "fogis-calendar-phonebook-sync",
         "image": "ghcr.io/pitchconnect/fogis-calendar-phonebook-sync:latest",
-        "status": "Up 2 minutes (healthy)",
+        "status": "Up 4 seconds (health: starting)",
         "ports": "0.0.0.0:9083->5003/tcp, [::]:9083->5003/tcp, 0.0.0.0:9084->8080/tcp, [::]:9084->8080/tcp, 0.0.0.0:9087->8090/tcp, [::]:9087->8090/tcp"
       },
       {
         "name": "team-logo-combiner",
         "image": "ghcr.io/pitchconnect/team-logo-combiner:latest",
-        "status": "Up 2 minutes (healthy)",
+        "status": "Up 4 seconds (health: starting)",
         "ports": "0.0.0.0:9088->5002/tcp, [::]:9088->5002/tcp"
       },
       {
         "name": "fogis-api-client-service",
         "image": "ghcr.io/pitchconnect/fogis-api-client:latest",
-        "status": "Up 2 minutes (healthy)",
+        "status": "Up 4 seconds (health: starting)",
         "ports": "0.0.0.0:9086->8080/tcp, [::]:9086->8080/tcp"
       },
       {
         "name": "google-drive-service",
         "image": "ghcr.io/pitchconnect/google-drive-service:latest",
-        "status": "Up 2 minutes (healthy)",
+        "status": "Up 4 seconds (health: starting)",
         "ports": "0.0.0.0:9085->5000/tcp, [::]:9085->5000/tcp"
       },
       {
@@ -164,7 +154,7 @@
       {
         "name": "watchtower",
         "image": "containrrr/watchtower:latest",
-        "status": "Restarting (1) 14 seconds ago",
+        "status": "Restarting (1) 38 seconds ago",
         "ports": ""
       },
       {
@@ -199,37 +189,37 @@
           "name": "fogis-api-client-service",
           "service": "fogis-api-client-service",
           "state": "running",
-          "health": "healthy"
+          "health": "starting"
         },
         {
           "name": "fogis-calendar-phonebook-sync",
           "service": "fogis-calendar-phonebook-sync",
           "state": "running",
-          "health": "healthy"
+          "health": "starting"
         },
         {
           "name": "google-drive-service",
           "service": "google-drive-service",
           "state": "running",
-          "health": "healthy"
+          "health": "starting"
         },
         {
           "name": "match-list-change-detector",
           "service": "match-list-change-detector",
           "state": "running",
-          "health": "healthy"
+          "health": "starting"
         },
         {
           "name": "match-list-processor",
           "service": "match-list-processor",
-          "state": "restarting",
-          "health": ""
+          "state": "running",
+          "health": "starting"
         },
         {
           "name": "team-logo-combiner",
           "service": "team-logo-combiner",
           "state": "running",
-          "health": "healthy"
+          "health": "starting"
         }
       ]
     }

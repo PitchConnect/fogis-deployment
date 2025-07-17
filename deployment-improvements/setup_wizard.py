@@ -190,9 +190,9 @@ class SetupWizard:
         
         print("\n🎉 Setup completed successfully!")
         print("\nNext steps:")
-        print("1. Run: docker-compose -f docker-compose-master.yml up -d")
+        print("1. Run: docker-compose -f docker-compose.yml up -d")
         print("2. Check health: curl http://localhost:9080/health")
-        print("3. Monitor logs: docker-compose -f docker-compose-master.yml logs -f")
+        print("3. Monitor logs: docker-compose -f docker-compose.yml logs -f")
         
         return True
     
@@ -358,9 +358,9 @@ class SetupWizard:
     
     def _check_docker_compose_config(self) -> Tuple[bool, str]:
         """Check if Docker Compose configuration is valid."""
-        compose_file = self.project_root / "docker-compose-master.yml"
+        compose_file = self.project_root / "docker-compose.yml"
         if not compose_file.exists():
-            return False, "docker-compose-master.yml not found"
+            return False, "docker-compose.yml not found"
         
         try:
             result = subprocess.run(

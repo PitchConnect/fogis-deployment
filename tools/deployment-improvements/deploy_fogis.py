@@ -126,9 +126,9 @@ class FOGISDeploymentOrchestrator:
     def _deploy_services(self) -> bool:
         """Deploy services using docker-compose."""
         try:
-            compose_file = self.project_root / "docker-compose-master.yml"
+            compose_file = self.project_root / "docker-compose.yml"
             if not compose_file.exists():
-                logger.error("docker-compose-master.yml not found")
+                logger.error("docker-compose.yml not found")
                 return False
             
             # Stop existing services
@@ -207,18 +207,18 @@ class FOGISDeploymentOrchestrator:
         print("\n2. Monitor services:")
         print("   python3 deployment-improvements/validation_system.py --monitor 10")
         print("\n3. View logs:")
-        print("   docker-compose -f docker-compose-master.yml logs -f")
+        print("   docker-compose -f docker-compose.yml logs -f")
         print("\n4. Access health endpoints:")
         print("   curl http://localhost:9080/health  # match-list-change-detector")
         print("   curl http://localhost:9082/health  # match-list-processor")
         
         print("\n🔧 Management Commands:")
         print("   # Restart services")
-        print("   docker-compose -f docker-compose-master.yml restart")
+        print("   docker-compose -f docker-compose.yml restart")
         print("   # Stop services")
-        print("   docker-compose -f docker-compose-master.yml down")
+        print("   docker-compose -f docker-compose.yml down")
         print("   # View service status")
-        print("   docker-compose -f docker-compose-master.yml ps")
+        print("   docker-compose -f docker-compose.yml ps")
     
     def _print_failure_summary(self) -> None:
         """Print failure summary with troubleshooting guidance."""
@@ -234,7 +234,7 @@ class FOGISDeploymentOrchestrator:
         print("1. Check Docker is running:")
         print("   docker ps")
         print("\n2. Check logs for errors:")
-        print("   docker-compose -f docker-compose-master.yml logs")
+        print("   docker-compose -f docker-compose.yml logs")
         print("\n3. Check environment configuration:")
         print("   cat .env")
         print("\n4. Validate configuration:")

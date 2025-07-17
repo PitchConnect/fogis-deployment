@@ -258,8 +258,8 @@ run_deployment() {
         echo "  cat deployment-improvements/README_IMPROVED.md"
         echo ""
         echo "🔧 Management:"
-        echo "  docker-compose -f docker-compose-master.yml ps"
-        echo "  docker-compose -f docker-compose-master.yml logs -f"
+        echo "  docker-compose -f docker-compose.yml ps"
+        echo "  docker-compose -f docker-compose.yml logs -f"
         echo ""
         
         return 0
@@ -271,7 +271,7 @@ run_deployment() {
         echo "  1. Check logs: cat $LOG_FILE"
         echo "  2. Run diagnostics: python3 deployment-improvements/validation_system.py"
         echo "  3. Check setup: python3 deployment-improvements/setup_wizard.py"
-        echo "  4. View service logs: docker-compose -f docker-compose-master.yml logs"
+        echo "  4. View service logs: docker-compose -f docker-compose.yml logs"
         echo ""
         
         return 1

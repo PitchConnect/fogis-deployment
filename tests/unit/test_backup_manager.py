@@ -36,7 +36,7 @@ class TestBackupManager:
         with open(f"{self.test_install_dir}/credentials/google-credentials.json", "w") as f:
             f.write('{"type": "service_account", "project_id": "test"}')
         
-        with open(f"{self.test_install_dir}/docker-compose-master.yml", "w") as f:
+        with open(f"{self.test_install_dir}/docker-compose.yml", "w") as f:
             f.write("version: '3.8'\nservices:\n  test:\n    image: test")
         
         with open(f"{self.test_install_dir}/.env", "w") as f:
@@ -127,7 +127,7 @@ class TestBackupManager:
         backup_content_dir = os.path.join(extract_dir, "test-backup")
         assert os.path.exists(f"{backup_content_dir}/credentials/google-credentials.json")
         assert os.path.exists(f"{backup_content_dir}/configs/.env")
-        assert os.path.exists(f"{backup_content_dir}/configs/docker-compose-master.yml")
+        assert os.path.exists(f"{backup_content_dir}/configs/docker-compose.yml")
         assert os.path.exists(f"{backup_content_dir}/data/test.json")
         assert os.path.exists(f"{backup_content_dir}/logs/test.log")
         assert os.path.exists(f"{backup_content_dir}/BACKUP_MANIFEST.txt")
@@ -172,7 +172,7 @@ class TestBackupManager:
         # Verify restored content
         assert os.path.exists(f"{restore_dir}/credentials/google-credentials.json")
         assert os.path.exists(f"{restore_dir}/.env")
-        assert os.path.exists(f"{restore_dir}/docker-compose-master.yml")
+        assert os.path.exists(f"{restore_dir}/docker-compose.yml")
         
         # Clean up
         subprocess.run(["rm", "-rf", restore_dir], check=False)

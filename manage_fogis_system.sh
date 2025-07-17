@@ -100,7 +100,7 @@ show_usage() {
 
 # Function to add cron job
 add_cron() {
-    CRON_COMMAND="0 * * * * cd $SCRIPT_DIR && docker-compose -f docker-compose-master.yml run --rm match-list-processor python match_list_processor.py >> logs/cron/match-processing.log 2>&1"
+    CRON_COMMAND="0 * * * * cd $SCRIPT_DIR && docker-compose -f docker-compose.yml run --rm match-list-processor python match_list_processor.py >> logs/cron/match-processing.log 2>&1"
 
     if crontab -l 2>/dev/null | grep -q "match-list-processor"; then
         print_warning "FOGIS cron job already exists"
@@ -152,22 +152,22 @@ update_services() {
 
     # Stop services
     print_info "Stopping services..."
-    docker-compose -f docker-compose-master.yml down
+    docker-compose -f docker-compose.yml down
 
     # Pull latest images
     print_info "Pulling latest images..."
-    docker-compose -f docker-compose-master.yml pull
+    docker-compose -f docker-compose.yml pull
 
     # Start services
     print_info "Starting updated services..."
-    docker-compose -f docker-compose-master.yml up -d
+    docker-compose -f docker-compose.yml up -d
 
     # Wait for services to be ready
     sleep 30
 
     # Check health
     print_info "Verifying service health..."
-    if docker-compose -f docker-compose-master.yml ps | grep -q "Up"; then
+    if docker-compose -f docker-compose.yml ps | grep -q "Up"; then
         print_status "Update completed successfully"
     else
         print_error "Some services failed to start after update"
@@ -233,37 +233,37 @@ cron_status() {
 case "$1" in
     start)
         print_info "Starting FOGIS services..."
-        docker-compose -f docker-compose-master.yml up -d
+        docker-compose -f docker-compose.yml up -d
         print_status "Services started"
         ;;
     stop)
         print_info "Stopping FOGIS services..."
-        docker-compose -f docker-compose-master.yml down
+        docker-compose -f docker-compose.yml down
         print_status "Services stopped"
         ;;
     restart)
         print_info "Restarting FOGIS services..."
-        docker-compose -f docker-compose-master.yml restart
+        docker-compose -f docker-compose.yml restart
         print_status "Services restarted"
         ;;
     status)
         print_info "FOGIS Service Status:"
         echo ""
-        docker-compose -f docker-compose-master.yml ps
+        docker-compose -f docker-compose.yml ps
         ;;
     logs)
         if [ -z "$2" ]; then
             print_info "Showing logs for all services..."
-            docker-compose -f docker-compose-master.yml logs --tail=50
+            docker-compose -f docker-compose.yml logs --tail=50
         else
             print_info "Showing logs for $2..."
-            docker-compose -f docker-compose-master.yml logs --tail=50 "$2"
+            docker-compose -f docker-compose.yml logs --tail=50 "$2"
         fi
         ;;
     test)
         print_info "Running test match processing..."
         echo ""
-        docker-compose -f docker-compose-master.yml run --rm match-list-processor python match_list_processor.py
+        docker-compose -f docker-compose.yml run --rm match-list-processor python match_list_processor.py
         print_status "Test completed"
         ;;
     health)

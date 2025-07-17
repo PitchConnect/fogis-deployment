@@ -137,11 +137,11 @@ graceful_service_shutdown() {
     fi
 
     # Fallback to Docker Compose
-    if [[ -f "$INSTALL_DIR/docker-compose-master.yml" ]]; then
+    if [[ -f "$INSTALL_DIR/docker-compose.yml" ]]; then
         log_progress "Using Docker Compose for shutdown..."
         cd "$INSTALL_DIR"
 
-        if docker-compose -f docker-compose-master.yml down --remove-orphans --volumes 2>/dev/null; then
+        if docker-compose -f docker-compose.yml down --remove-orphans --volumes 2>/dev/null; then
             log_success "Services stopped via Docker Compose"
         else
             log_warning "Docker Compose shutdown failed"
@@ -417,7 +417,7 @@ verify_installation_health() {
     fi
 
     # Check 2: Essential files present
-    if [[ -f "$INSTALL_DIR/docker-compose-master.yml" ]] && [[ -f "$INSTALL_DIR/.env" ]]; then
+    if [[ -f "$INSTALL_DIR/docker-compose.yml" ]] && [[ -f "$INSTALL_DIR/.env" ]]; then
         log_success "Essential configuration files present"
         ((health_checks++))
     else
@@ -434,7 +434,7 @@ verify_installation_health() {
 
     # Check 4: Containers can be started (dry run)
     cd "$INSTALL_DIR" || return 1
-    if docker-compose -f docker-compose-master.yml config >/dev/null 2>&1; then
+    if docker-compose -f docker-compose.yml config >/dev/null 2>&1; then
         log_success "Docker Compose configuration valid"
         ((health_checks++))
     else

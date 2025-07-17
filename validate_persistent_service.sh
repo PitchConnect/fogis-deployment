@@ -123,7 +123,7 @@ echo "   Checking service status over 30 seconds..."
 RESTART_COUNT=0
 for i in {1..6}; do
     sleep 5
-    if docker compose -f ../../docker-compose-master.yml ps match-list-change-detector | grep -q "Restarting"; then
+    if docker compose -f ../../docker-compose.yml ps match-list-change-detector | grep -q "Restarting"; then
         ((RESTART_COUNT++))
     fi
 done
@@ -136,7 +136,7 @@ fi
 
 # Test 6: Docker health check
 print_test "Docker health check status"
-DOCKER_STATUS=$(docker compose -f ../../docker-compose-master.yml ps match-list-change-detector --format "table {{.Status}}" | tail -n 1)
+DOCKER_STATUS=$(docker compose -f ../../docker-compose.yml ps match-list-change-detector --format "table {{.Status}}" | tail -n 1)
 if echo "$DOCKER_STATUS" | grep -q "healthy\|starting"; then
     print_pass "Docker reports service as healthy"
     print_info "Docker status: $DOCKER_STATUS"

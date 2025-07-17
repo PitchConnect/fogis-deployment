@@ -404,9 +404,9 @@ cleanup_existing() {
         log_info "Rollback mode - performing complete cleanup..."
 
         # Stop and remove containers
-        if docker-compose -f docker-compose-master.yml ps -q 2>/dev/null | grep -q .; then
+        if docker-compose -f docker-compose.yml ps -q 2>/dev/null | grep -q .; then
             log_info "Stopping and removing containers..."
-            docker-compose -f docker-compose-master.yml down --remove-orphans --volumes || true
+            docker-compose -f docker-compose.yml down --remove-orphans --volumes || true
         fi
 
         # Remove Docker images
@@ -427,9 +427,9 @@ cleanup_existing() {
     log_info "Preparing for fresh installation..."
 
     # Stop containers gracefully
-    if docker-compose -f docker-compose-master.yml ps -q 2>/dev/null | grep -q .; then
+    if docker-compose -f docker-compose.yml ps -q 2>/dev/null | grep -q .; then
         log_info "Stopping existing containers..."
-        docker-compose -f docker-compose-master.yml down --remove-orphans || true
+        docker-compose -f docker-compose.yml down --remove-orphans || true
     fi
 
     # Backup existing data if it exists
@@ -1140,15 +1140,15 @@ start_services() {
     log_info "Starting FOGIS services..."
 
     # Check if docker-compose file exists
-    if [[ ! -f "docker-compose-master.yml" ]]; then
-        log_error "docker-compose-master.yml not found"
+    if [[ ! -f "docker-compose.yml" ]]; then
+        log_error "docker-compose.yml not found"
         exit 1
     fi
 
     log_progress "Starting core services..."
 
     # Start core services first
-    if docker-compose -f docker-compose-master.yml up -d fogis-api-client-service; then
+    if docker-compose -f docker-compose.yml up -d fogis-api-client-service; then
         log_success "Core service started"
         sleep 10
     else
@@ -1159,7 +1159,7 @@ start_services() {
     log_progress "Starting processing services..."
 
     # Start processing services
-    if docker-compose -f docker-compose-master.yml up -d match-list-processor team-logo-combiner google-drive-service; then
+    if docker-compose -f docker-compose.yml up -d match-list-processor team-logo-combiner google-drive-service; then
         log_success "Processing services started"
         sleep 15
     else
@@ -1170,7 +1170,7 @@ start_services() {
     log_progress "Starting sync services..."
 
     # Start sync services
-    if docker-compose -f docker-compose-master.yml up -d fogis-calendar-phonebook-sync; then
+    if docker-compose -f docker-compose.yml up -d fogis-calendar-phonebook-sync; then
         log_success "Sync services started"
         sleep 10
     else
@@ -1181,7 +1181,7 @@ start_services() {
     log_progress "Starting automation services..."
 
     # Start change detector and scheduler
-    if docker-compose -f docker-compose-master.yml up -d match-list-change-detector; then
+    if docker-compose -f docker-compose.yml up -d match-list-change-detector; then
         log_success "Automation services started"
     else
         log_error "Failed to start automation services"
@@ -1231,7 +1231,7 @@ check_service_health() {
                 # Try to restart the service
                 if [[ "$AUTO_MODE" == "true" ]]; then
                     log_info "Auto-restarting $service..."
-                    docker-compose -f docker-compose-master.yml restart "$service"
+                    docker-compose -f docker-compose.yml restart "$service"
                     sleep 10
 
                     # Check again after restart
@@ -1251,7 +1251,7 @@ check_service_health() {
         if [[ "$service_healthy" == "false" ]]; then
             echo ""
             echo "📋 Service $service is not responding"
-            echo "Check logs: docker-compose -f docker-compose-master.yml logs $service"
+            echo "Check logs: docker-compose -f docker-compose.yml logs $service"
             echo ""
         fi
     done

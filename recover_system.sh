@@ -64,22 +64,22 @@ start_services() {
 
     # Start core services first
     log_info "Starting core services..."
-    docker-compose -f docker-compose-master.yml up -d fogis-api-client-service
+    docker-compose -f docker-compose.yml up -d fogis-api-client-service
     sleep 10
 
     # Start processing services
     log_info "Starting processing services..."
-    docker-compose -f docker-compose-master.yml up -d match-list-processor team-logo-combiner google-drive-service
+    docker-compose -f docker-compose.yml up -d match-list-processor team-logo-combiner google-drive-service
     sleep 15
 
     # Start sync services
     log_info "Starting sync services..."
-    docker-compose -f docker-compose-master.yml up -d fogis-calendar-phonebook-sync
+    docker-compose -f docker-compose.yml up -d fogis-calendar-phonebook-sync
     sleep 10
 
     # Start change detector and scheduler
     log_info "Starting monitoring services..."
-    docker-compose -f docker-compose-master.yml up -d match-list-change-detector cron-scheduler
+    docker-compose -f docker-compose.yml up -d match-list-change-detector cron-scheduler
 
     log_success "All services started"
 }
@@ -193,7 +193,7 @@ main() {
         echo ""
         echo "❌ SYSTEM RECOVERY FAILED"
         echo "Some services are not healthy. Check logs:"
-        echo "docker-compose -f docker-compose-master.yml logs [service-name]"
+        echo "docker-compose -f docker-compose.yml logs [service-name]"
         exit 1
     fi
 }

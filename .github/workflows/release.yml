@@ -114,7 +114,7 @@ jobs:
           VERSION="${{ needs.create-release.outputs.version }}"
 
           # Update docker-compose.yml with new version tags
-          sed -i "s/:latest/:$VERSION/g" fogis-deployment/docker-compose-master.yml
+          sed -i "s/:latest/:$VERSION/g" fogis-deployment/docker-compose.yml
 
           # Update setup script version references
           sed -i "s/ghcr.io\/pitchconnect\/\([^:]*\):latest/ghcr.io\/pitchconnect\/\1:$VERSION/g" fogis-deployment/setup_fogis_system.sh
