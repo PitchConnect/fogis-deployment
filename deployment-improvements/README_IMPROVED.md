@@ -25,7 +25,7 @@ python3 deployment-improvements/deploy_fogis.py
 The deployment script will automatically check and guide you through installing:
 
 - **Docker Desktop** (includes Docker Compose)
-- **Git** 
+- **Git**
 - **Python 3.8+**
 - **FOGIS Account** (username/password)
 - **Google Cloud Project** (for OAuth)
@@ -164,16 +164,16 @@ python3 deployment-improvements/validation_system.py
 
 ```bash
 # View service status
-docker-compose -f docker-compose-master.yml ps
+docker-compose -f docker-compose.yml ps
 
 # View logs
-docker-compose -f docker-compose-master.yml logs -f
+docker-compose -f docker-compose.yml logs -f
 
 # Restart specific service
-docker-compose -f docker-compose-master.yml restart match-list-change-detector
+docker-compose -f docker-compose.yml restart match-list-change-detector
 
 # Scale services
-docker-compose -f docker-compose-master.yml up -d --scale match-list-processor=2
+docker-compose -f docker-compose.yml up -d --scale match-list-processor=2
 ```
 
 ### Troubleshooting Common Issues
@@ -267,7 +267,7 @@ echo "0 * * * * cd /path/to/fogis-deployment && python3 deployment-improvements/
 
 2. **Review deployment logs:**
    ```bash
-   docker-compose -f docker-compose-master.yml logs
+   docker-compose -f docker-compose.yml logs
    ```
 
 3. **Run diagnostics:**
@@ -289,7 +289,7 @@ echo "0 * * * * cd /path/to/fogis-deployment && python3 deployment-improvements/
 
 ```bash
 # Complete reset
-docker-compose -f docker-compose-master.yml down
+docker-compose -f docker-compose.yml down
 docker system prune -f
 python3 deployment-improvements/deploy_fogis.py
 
@@ -318,7 +318,7 @@ config = EnhancedConfig("my-service", custom_config)
 ### Performance Tuning
 
 ```yaml
-# docker-compose-master.yml
+# docker-compose.yml
 services:
   match-list-change-detector:
     deploy:

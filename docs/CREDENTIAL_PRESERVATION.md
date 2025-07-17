@@ -145,7 +145,7 @@ Password: temporary
    # Remove old installation
    docker-compose down
    rm -rf fogis-deployment
-   
+
    # Fresh installation
    git clone https://github.com/PitchConnect/fogis-deployment.git
    cd fogis-deployment
@@ -155,7 +155,7 @@ Password: temporary
    ```bash
    # Copy backup to new installation directory
    cp -r ../fogis-credentials-backup-* .
-   
+
    # Run setup (will auto-detect and restore)
    ./setup_fogis_system.sh --auto
    ```

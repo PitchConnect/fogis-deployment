@@ -53,7 +53,7 @@ def check_services_running():
             if service not in result.stdout:
                 print(f"❌ Service {service} is not running!")
                 print(
-                    "🚀 Please start services first: docker-compose -f docker-compose-master.yml up -d"
+                    "🚀 Please start services first: docker-compose -f docker-compose.yml up -d"
                 )
                 return False
         except subprocess.CalledProcessError:

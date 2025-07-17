@@ -19,8 +19,8 @@ echo ""
 echo "📊 SERVICE STATUS:"
 echo "==================="
 
-if docker-compose -f docker-compose-master.yml ps >/dev/null 2>&1; then
-    docker-compose -f docker-compose-master.yml ps
+if docker-compose -f docker-compose.yml ps >/dev/null 2>&1; then
+    docker-compose -f docker-compose.yml ps
 else
     echo "⚠️  Services not started yet"
     echo "Run: ./manage_fogis_system.sh start"

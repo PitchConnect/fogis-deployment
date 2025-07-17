@@ -18,7 +18,7 @@
    - Status: Open, awaiting review
    - Priority: High (architectural improvement)
 
-2. **match-list-processor**: Issue #20 - Event-Driven Architecture  
+2. **match-list-processor**: Issue #20 - Event-Driven Architecture
    - URL: https://github.com/PitchConnect/match-list-processor/issues/20
    - Status: Open, awaiting review
    - Priority: High (architectural improvement)
@@ -126,9 +126,9 @@ match-list-processor:
 1. **Update docker-compose.yml**:
    ```bash
    # Replace build contexts with image references
-   sed -i 's/build:/# build:/' docker-compose-master.yml
-   sed -i 's/context:/# context:/' docker-compose-master.yml
-   sed -i 's/dockerfile:/# dockerfile:/' docker-compose-master.yml
+   sed -i 's/build:/# build:/' docker-compose.yml
+   sed -i 's/context:/# context:/' docker-compose.yml
+   sed -i 's/dockerfile:/# dockerfile:/' docker-compose.yml
    ```
 
 2. **Add image references**:
@@ -139,8 +139,8 @@ match-list-processor:
 
 3. **Test migration**:
    ```bash
-   docker-compose -f docker-compose-master.yml pull
-   docker-compose -f docker-compose-master.yml up -d
+   docker-compose -f docker-compose.yml pull
+   docker-compose -f docker-compose.yml up -d
    ```
 
 4. **Validate functionality**:
@@ -155,8 +155,8 @@ If published images don't work as expected:
 
 1. **Immediate rollback**:
    ```bash
-   git checkout HEAD~1 docker-compose-master.yml
-   docker-compose -f docker-compose-master.yml up -d --build
+   git checkout HEAD~1 docker-compose.yml
+   docker-compose -f docker-compose.yml up -d --build
    ```
 
 2. **Verify local patches still work**:

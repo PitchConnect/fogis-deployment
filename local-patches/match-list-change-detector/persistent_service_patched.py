@@ -20,12 +20,12 @@ from types import FrameType
 from typing import Any, Dict, Optional
 
 import uvicorn
-from croniter import croniter
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse
 
 # Import existing modules
 from config import get_config
+from croniter import croniter
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
 from logging_config import get_logger
 
 logger = get_logger("persistent_service")
@@ -41,10 +41,15 @@ class PersistentMatchListChangeDetectorService:
 
         # Service configuration - read directly from environment variables to ensure they're picked up
         import os
+
         self.run_mode = os.environ.get("RUN_MODE", "oneshot").lower()
-        self.cron_schedule = os.environ.get("CRON_SCHEDULE", os.environ.get("MATCH_DETECTOR_CRON_SCHEDULE", "0 * * * *"))
+        self.cron_schedule = os.environ.get(
+            "CRON_SCHEDULE", os.environ.get("MATCH_DETECTOR_CRON_SCHEDULE", "0 * * * *")
+        )
         self.health_server_port = int(os.environ.get("HEALTH_SERVER_PORT", "8000"))
-        self.health_server_host = os.environ.get("HEALTH_SERVER_HOST", "0.0.0.0")  # nosec B104
+        self.health_server_host = os.environ.get(
+            "HEALTH_SERVER_HOST", "0.0.0.0"
+        )  # nosec B104
 
         # Service state
         self.running = True
@@ -96,8 +101,12 @@ class PersistentMatchListChangeDetectorService:
                 "status": status,
                 "run_mode": self.run_mode,
                 "cron_schedule": self.cron_schedule,
-                "last_execution": self.last_execution.isoformat() if self.last_execution else None,
-                "next_execution": self.next_execution.isoformat() if self.next_execution else None,
+                "last_execution": self.last_execution.isoformat()
+                if self.last_execution
+                else None,
+                "next_execution": self.next_execution.isoformat()
+                if self.next_execution
+                else None,
                 "execution_count": self.execution_count,
                 "uptime_seconds": time.time() - self.start_time,
                 "timestamp": datetime.now().isoformat(),
@@ -115,10 +124,15 @@ class PersistentMatchListChangeDetectorService:
             try:
                 logger.info("Manual trigger received, executing change detection...")
                 await self._execute_change_detection()
-                return {"status": "success", "message": "Change detection executed successfully"}
+                return {
+                    "status": "success",
+                    "message": "Change detection executed successfully",
+                }
             except Exception as e:
                 logger.error(f"Manual trigger failed: {e}")
-                raise HTTPException(status_code=500, detail=f"Execution failed: {str(e)}")
+                raise HTTPException(
+                    status_code=500, detail=f"Execution failed: {str(e)}"
+                )
 
         @app.get("/status")
         async def service_status() -> Dict[str, Any]:
@@ -128,8 +142,12 @@ class PersistentMatchListChangeDetectorService:
                 "run_mode": self.run_mode,
                 "running": self.running,
                 "cron_schedule": self.cron_schedule,
-                "last_execution": self.last_execution.isoformat() if self.last_execution else None,
-                "next_execution": self.next_execution.isoformat() if self.next_execution else None,
+                "last_execution": self.last_execution.isoformat()
+                if self.last_execution
+                else None,
+                "next_execution": self.next_execution.isoformat()
+                if self.next_execution
+                else None,
                 "execution_count": self.execution_count,
                 "uptime_seconds": time.time() - self.start_time,
                 "configuration": {
@@ -175,7 +193,9 @@ class PersistentMatchListChangeDetectorService:
             # Run the change detection in a thread pool to avoid blocking
             result = await asyncio.get_event_loop().run_in_executor(None, run_detection)
 
-            logger.info(f"Change detection cycle #{self.execution_count} completed successfully")
+            logger.info(
+                f"Change detection cycle #{self.execution_count} completed successfully"
+            )
 
             # Update next execution time if running in service mode
             if self.run_mode == "service":
@@ -209,7 +229,9 @@ class PersistentMatchListChangeDetectorService:
 
         self.server_thread = threading.Thread(target=run_server, daemon=True)
         self.server_thread.start()
-        logger.info(f"HTTP server started on {self.health_server_host}: {self.health_server_port}")
+        logger.info(
+            f"HTTP server started on {self.health_server_host}: {self.health_server_port}"
+        )
 
     def run(self) -> None:
         """Run the main application logic."""
@@ -229,7 +251,9 @@ class PersistentMatchListChangeDetectorService:
 
     def _run_as_service(self) -> None:
         """Run as a persistent service with cron-based scheduling."""
-        logger.info(f"Running as persistent service with cron schedule: {self.cron_schedule}")
+        logger.info(
+            f"Running as persistent service with cron schedule: {self.cron_schedule}"
+        )
 
         while self.running:
             try:
@@ -237,7 +261,9 @@ class PersistentMatchListChangeDetectorService:
 
                 # Check if it's time to execute
                 if self.next_execution and now >= self.next_execution:
-                    logger.info("Scheduled execution time reached, running change detection...")
+                    logger.info(
+                        "Scheduled execution time reached, running change detection..."
+                    )
                     asyncio.run(self._execute_change_detection())
 
                 # Sleep for 1 second and check again
@@ -267,6 +293,7 @@ def main() -> None:
     """Run the persistent service entry point."""
     # Check if we should run in persistent service mode - read directly from environment
     import os
+
     run_mode = os.environ.get("RUN_MODE", "oneshot").lower()
 
     if run_mode == "service":

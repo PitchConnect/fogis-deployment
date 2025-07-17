@@ -82,10 +82,10 @@ async def process_matches():
             "status": "busy",
             "message": "Processing already in progress"
         })
-    
+
     # Start processing in background thread
     threading.Thread(target=self._process_matches_sync, daemon=True).start()
-    
+
     return JSONResponse(status_code=200, content={
         "status": "success",
         "message": "Match processing triggered"
@@ -98,14 +98,14 @@ def _process_matches_sync(self):
     """Process only changed matches."""
     # Compare current vs previous matches
     changes = comparator.compare_matches()
-    
+
     if changes["has_changes"]:
         # Process only new and updated matches
         all_matches_to_process = (
-            list(changes["new_matches"].values()) + 
+            list(changes["new_matches"].values()) +
             list(changes["updated_matches"].values())
         )
-        
+
         for match in all_matches_to_process:
             self.match_processor.process_match(match)
     else:
@@ -142,7 +142,7 @@ match-list-change-detector:
   environment:
     - WEBHOOK_URL=http://match-list-processor:8000/process
 
-# Processor configuration  
+# Processor configuration
 match-list-processor:
   environment:
     - RUN_MODE=service

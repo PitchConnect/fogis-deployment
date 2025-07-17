@@ -26,7 +26,7 @@ class DeploymentBenchmark:
             "fogis-calendar-phonebook-sync",
             "google-drive-service",
         ]
-        self.compose_file = "docker-compose-master.yml"
+        self.compose_file = "docker-compose.yml"
 
     def run_command(
         self, command: List[str], timeout: int = 300

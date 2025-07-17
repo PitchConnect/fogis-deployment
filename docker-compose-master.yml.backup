@@ -1,4 +1,4 @@
-version: '3.8'
+
 
 # Load environment variables from .env file
 # This ensures FOGIS credentials and other configuration are properly loaded

@@ -13,7 +13,7 @@ move_token_safely() {
     local source="$1"
     local destination="$2"
     local service_name="$3"
-    
+
     if [ -f "$source" ]; then
         echo "📁 Moving $service_name token: $source → $destination"
         mkdir -p "$(dirname "$destination")"
@@ -58,4 +58,4 @@ echo ""
 echo "✅ Token placement fix completed!"
 echo ""
 echo "🔄 Restart services to pick up the corrected tokens:"
-echo "   docker-compose -f docker-compose-master.yml restart google-drive-service fogis-calendar-phonebook-sync"
+echo "   docker-compose -f docker-compose.yml restart google-drive-service fogis-calendar-phonebook-sync"

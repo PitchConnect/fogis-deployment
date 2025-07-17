@@ -352,8 +352,8 @@ start_core_services() {
 
     cd "$PROJECT_ROOT"
 
-    # Start services with quick setup optimizations
-    docker compose -f docker-compose.yml -f docker-compose.quick.yml up -d
+    # Start services using the manage script (more reliable)
+    ./manage_fogis_system.sh start
 
     # Wait for services to be ready (with timeout)
     local timeout=120  # 2 minutes

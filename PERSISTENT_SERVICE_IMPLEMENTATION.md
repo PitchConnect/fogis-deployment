@@ -51,7 +51,7 @@ RUN_MODE=service  # New persistent mode with HTTP server
 ### Configuration
 
 ```yaml
-# docker-compose-master.yml
+# docker-compose.yml
 match-list-change-detector:
   environment:
     - RUN_MODE=service
@@ -89,7 +89,7 @@ MATCH_DETECTOR_CRON_SCHEDULE=0 * * * *  # Hourly execution
 - `local-patches/match-list-change-detector/Dockerfile.patched` - Enhanced Dockerfile
 
 ### Configuration Updates
-- `docker-compose-master.yml` - Updated service configuration
+- `docker-compose.yml` - Updated service configuration
 - `.env` - Added `MATCH_DETECTOR_CRON_SCHEDULE` variable
 
 ## Benefits Achieved
