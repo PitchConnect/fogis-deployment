@@ -56,9 +56,9 @@ show_usage() {
 # Function to detect backup directories automatically
 detect_backup_directories() {
     log_info "Scanning for FOGIS credential backup directories..."
-    
+
     local backup_dirs=()
-    
+
     # Look for backup directories in common locations
     for pattern in "fogis-credentials-backup-*" "../fogis-credentials-backup-*" "*/fogis-credentials-backup-*"; do
         for dir in $pattern; do
@@ -67,18 +67,18 @@ detect_backup_directories() {
             fi
         done
     done
-    
+
     if [[ ${#backup_dirs[@]} -eq 0 ]]; then
         log_warning "No FOGIS credential backup directories found"
         return 1
     fi
-    
+
     log_success "Found ${#backup_dirs[@]} backup director(ies):"
     for dir in "${backup_dirs[@]}"; do
         local timestamp=$(basename "$dir" | sed 's/fogis-credentials-backup-//')
         echo "  📁 $dir (created: $timestamp)"
     done
-    
+
     # Return the most recent backup directory
     printf '%s\n' "${backup_dirs[@]}" | sort -r | head -n1
 }
@@ -87,37 +87,37 @@ detect_backup_directories() {
 extract_credentials_from_backup() {
     local backup_dir="$1"
     local credentials_file="$backup_dir/FOGIS_CREDENTIALS.txt"
-    
+
     if [[ ! -f "$credentials_file" ]]; then
         log_error "Credentials file not found: $credentials_file"
         return 1
     fi
-    
+
     log_info "Extracting credentials from backup..."
-    
+
     # Extract FOGIS credentials using more robust parsing
     local username=$(grep "^FOGIS_USERNAME=" "$credentials_file" 2>/dev/null | head -n1 | cut -d'=' -f2- | sed 's/^["'\'']*//;s/["'\'']*$//')
     local password=$(grep "^FOGIS_PASSWORD=" "$credentials_file" 2>/dev/null | head -n1 | cut -d'=' -f2- | sed 's/^["'\'']*//;s/["'\'']*$//')
     local referee_number=$(grep "^USER_REFEREE_NUMBER=" "$credentials_file" 2>/dev/null | head -n1 | cut -d'=' -f2- | sed 's/^["'\'']*//;s/["'\'']*$//')
-    
+
     if [[ -z "$username" || -z "$password" ]]; then
         log_error "Could not extract FOGIS credentials from backup file"
         log_info "Expected format: FOGIS_USERNAME=value and FOGIS_PASSWORD=value"
         return 1
     fi
-    
+
     log_success "Successfully extracted credentials:"
     echo "  👤 Username: $username"
     echo "  🔑 Password: [REDACTED]"
     if [[ -n "$referee_number" ]]; then
         echo "  🏆 Referee Number: $referee_number"
     fi
-    
+
     # Export for use by other functions
     export RESTORED_FOGIS_USERNAME="$username"
     export RESTORED_FOGIS_PASSWORD="$password"
     export RESTORED_REFEREE_NUMBER="$referee_number"
-    
+
     return 0
 }
 
@@ -125,7 +125,7 @@ extract_credentials_from_backup() {
 update_env_file() {
     local env_file="${1:-.env}"
     local dry_run="${2:-false}"
-    
+
     if [[ "$dry_run" == "true" ]]; then
         log_info "DRY RUN: Would update $env_file with:"
         echo "  FOGIS_USERNAME=$RESTORED_FOGIS_USERNAME"
@@ -135,21 +135,21 @@ update_env_file() {
         fi
         return 0
     fi
-    
+
     log_info "Updating $env_file with restored credentials..."
-    
+
     # Create backup of existing .env file
     if [[ -f "$env_file" ]]; then
         cp "$env_file" "$env_file.backup.$(date +%Y%m%d-%H%M%S)"
         log_info "Created backup: $env_file.backup.$(date +%Y%m%d-%H%M%S)"
     fi
-    
+
     # Create or update .env file
     local temp_file=$(mktemp)
     local updated_username=false
     local updated_password=false
     local updated_referee=false
-    
+
     # Process existing .env file if it exists
     if [[ -f "$env_file" ]]; then
         while IFS= read -r line; do
@@ -167,7 +167,7 @@ update_env_file() {
             fi
         done < "$env_file"
     fi
-    
+
     # Add missing credentials
     if [[ "$updated_username" == "false" ]]; then
         echo "FOGIS_USERNAME=$RESTORED_FOGIS_USERNAME" >> "$temp_file"
@@ -178,11 +178,11 @@ update_env_file() {
     if [[ "$updated_referee" == "false" && -n "$RESTORED_REFEREE_NUMBER" ]]; then
         echo "USER_REFEREE_NUMBER=$RESTORED_REFEREE_NUMBER" >> "$temp_file"
     fi
-    
+
     # Replace original file
     mv "$temp_file" "$env_file"
     chmod 600 "$env_file"  # Secure permissions
-    
+
     log_success "Successfully updated $env_file with restored credentials"
     return 0
 }
@@ -190,7 +190,7 @@ update_env_file() {
 # Function to validate restored credentials
 validate_credentials() {
     log_info "Validating restored FOGIS credentials..."
-    
+
     # Check if validation script exists
     if [[ -f "scripts/validate_fogis_credentials.py" ]]; then
         log_info "Using credential validation script..."
@@ -215,19 +215,19 @@ restore_credentials() {
     local auto_mode="$2"
     local validate="$3"
     local dry_run="$4"
-    
+
     log_info "Starting FOGIS credential restoration..."
     echo "📁 Backup directory: $backup_dir"
     echo "🤖 Auto mode: $auto_mode"
     echo "✅ Validate: $validate"
     echo "🔍 Dry run: $dry_run"
     echo ""
-    
+
     # Extract credentials from backup
     if ! extract_credentials_from_backup "$backup_dir"; then
         return 1
     fi
-    
+
     # Confirm restoration unless in auto mode
     if [[ "$auto_mode" != "true" && "$dry_run" != "true" ]]; then
         echo ""
@@ -238,17 +238,17 @@ restore_credentials() {
             return 0
         fi
     fi
-    
+
     # Update .env file
     if ! update_env_file ".env" "$dry_run"; then
         return 1
     fi
-    
+
     # Validate credentials if requested and not in dry run mode
     if [[ "$validate" == "true" && "$dry_run" != "true" ]]; then
         validate_credentials
     fi
-    
+
     if [[ "$dry_run" != "true" ]]; then
         log_success "FOGIS credential restoration completed successfully!"
         echo ""
@@ -259,7 +259,7 @@ restore_credentials() {
     else
         log_info "Dry run completed - no changes made"
     fi
-    
+
     return 0
 }
 
@@ -310,7 +310,7 @@ main() {
     echo "🔐 FOGIS Credential Restoration Tool"
     echo "===================================="
     echo ""
-    
+
     # Auto-detect backup directory if not provided
     if [[ -z "$BACKUP_DIR" ]]; then
         log_info "No backup directory specified, attempting auto-detection..."
@@ -324,19 +324,19 @@ main() {
         log_success "Auto-detected backup directory: $BACKUP_DIR"
         echo ""
     fi
-    
+
     # Validate backup directory
     if [[ ! -d "$BACKUP_DIR" ]]; then
         log_error "Backup directory not found: $BACKUP_DIR"
         exit 1
     fi
-    
+
     if [[ ! -f "$BACKUP_DIR/FOGIS_CREDENTIALS.txt" ]]; then
         log_error "FOGIS credentials file not found in backup directory"
         log_info "Expected: $BACKUP_DIR/FOGIS_CREDENTIALS.txt"
         exit 1
     fi
-    
+
     # Perform credential restoration
     if restore_credentials "$BACKUP_DIR" "$AUTO_MODE" "$VALIDATE" "$DRY_RUN"; then
         exit 0

@@ -48,37 +48,37 @@ print_test "Health endpoint JSON structure"
 HEALTH_RESPONSE=$(curl -s "$BASE_URL/health")
 if echo "$HEALTH_RESPONSE" | python3 -m json.tool > /dev/null 2>&1; then
     print_pass "Health endpoint returns valid JSON"
-    
+
     # Extract key fields
     SERVICE_NAME=$(echo "$HEALTH_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin).get('service_name', ''))")
     STATUS=$(echo "$HEALTH_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin).get('status', ''))")
     RUN_MODE=$(echo "$HEALTH_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin).get('run_mode', ''))")
     CRON_SCHEDULE=$(echo "$HEALTH_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin).get('cron_schedule', ''))")
-    
+
     print_info "Service: $SERVICE_NAME"
     print_info "Status: $STATUS"
     print_info "Mode: $RUN_MODE"
     print_info "Schedule: $CRON_SCHEDULE"
-    
+
     # Validate fields
     if [ "$SERVICE_NAME" = "match-list-change-detector" ]; then
         print_pass "Service name is correct"
     else
         print_fail "Service name is incorrect: $SERVICE_NAME"
     fi
-    
+
     if [ "$STATUS" = "healthy" ]; then
         print_pass "Service status is healthy"
     else
         print_fail "Service status is not healthy: $STATUS"
     fi
-    
+
     if [ "$RUN_MODE" = "service" ]; then
         print_pass "Service is running in service mode"
     else
         print_fail "Service is not in service mode: $RUN_MODE"
     fi
-    
+
     if [ -n "$CRON_SCHEDULE" ]; then
         print_pass "Cron schedule is configured: $CRON_SCHEDULE"
     else
@@ -101,13 +101,13 @@ print_test "Manual trigger functionality"
 TRIGGER_RESPONSE=$(curl -s -X POST "$BASE_URL/trigger")
 if echo "$TRIGGER_RESPONSE" | python3 -c "import sys, json; data=json.load(sys.stdin); exit(0 if data.get('status')=='success' else 1)" 2>/dev/null; then
     print_pass "Manual trigger works correctly"
-    
+
     # Check if execution count increased
     sleep 1
     NEW_HEALTH_RESPONSE=$(curl -s "$BASE_URL/health")
     NEW_EXEC_COUNT=$(echo "$NEW_HEALTH_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin).get('execution_count', 0))")
     print_info "Execution count after trigger: $NEW_EXEC_COUNT"
-    
+
     if [ "$NEW_EXEC_COUNT" -gt 0 ]; then
         print_pass "Execution count is tracking correctly"
     else

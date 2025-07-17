@@ -25,7 +25,7 @@ python3 deployment-improvements/deploy_fogis.py
 The deployment script will automatically check and guide you through installing:
 
 - **Docker Desktop** (includes Docker Compose)
-- **Git** 
+- **Git**
 - **Python 3.8+**
 - **FOGIS Account** (username/password)
 - **Google Cloud Project** (for OAuth)

@@ -13,7 +13,7 @@ move_token_safely() {
     local source="$1"
     local destination="$2"
     local service_name="$3"
-    
+
     if [ -f "$source" ]; then
         echo "📁 Moving $service_name token: $source → $destination"
         mkdir -p "$(dirname "$destination")"

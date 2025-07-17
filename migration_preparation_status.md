@@ -50,7 +50,7 @@ The FOGIS system is **READY FOR PRODUCTION MIGRATION** with event-driven archite
 - **Priority**: High - Architectural improvement
 - **Impact**: 90% reduction in resource usage
 
-#### **2. match-list-processor Enhancement**  
+#### **2. match-list-processor Enhancement**
 - **Issue**: [#20 - Add Event-Driven Architecture with Webhook Processing](https://github.com/PitchConnect/match-list-processor/issues/20)
 - **Status**: ✅ **SUBMITTED** - Awaiting upstream review
 - **Priority**: High - Architectural improvement
@@ -85,7 +85,7 @@ match-list-change-detector:
 
 match-list-processor:
   build:
-    context: local-patches/match-list-processor  
+    context: local-patches/match-list-processor
     dockerfile: Dockerfile.patched
   environment:
     - RUN_MODE=service

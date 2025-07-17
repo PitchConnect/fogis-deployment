@@ -18,7 +18,7 @@
    - Status: Open, awaiting review
    - Priority: High (architectural improvement)
 
-2. **match-list-processor**: Issue #20 - Event-Driven Architecture  
+2. **match-list-processor**: Issue #20 - Event-Driven Architecture
    - URL: https://github.com/PitchConnect/match-list-processor/issues/20
    - Status: Open, awaiting review
    - Priority: High (architectural improvement)

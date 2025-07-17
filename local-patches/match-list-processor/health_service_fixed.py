@@ -8,7 +8,6 @@ from typing import Any, Dict
 
 import requests
 from pydantic import BaseModel
-
 from src.config import Settings
 
 logger = logging.getLogger(__name__)
@@ -63,7 +62,9 @@ class HealthService:
             },
         }
 
-    async def check_dependency(self, name: str, config: Dict[str, Any]) -> DependencyStatus:
+    async def check_dependency(
+        self, name: str, config: Dict[str, Any]
+    ) -> DependencyStatus:
         """Check the health of a single dependency."""
         start_time = time.time()
 
@@ -138,9 +139,13 @@ class HealthService:
 
         return dependencies
 
-    def _determine_overall_status(self, dependencies: Dict[str, DependencyStatus]) -> str:
+    def _determine_overall_status(
+        self, dependencies: Dict[str, DependencyStatus]
+    ) -> str:
         """Determine overall service status based on dependencies."""
-        healthy_count = sum(1 for dep in dependencies.values() if dep.status == "healthy")
+        healthy_count = sum(
+            1 for dep in dependencies.values() if dep.status == "healthy"
+        )
         total_count = len(dependencies)
 
         if healthy_count == total_count:

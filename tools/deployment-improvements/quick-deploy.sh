@@ -46,7 +46,7 @@ check_command() {
 
 install_docker_macos() {
     log "Installing Docker Desktop for macOS..."
-    
+
     # Check if Homebrew is available
     if command -v brew >/dev/null 2>&1; then
         log "Installing Docker via Homebrew..."
@@ -67,13 +67,13 @@ install_docker_macos() {
 
 install_docker_linux() {
     log "Installing Docker for Linux..."
-    
+
     # Detect Linux distribution
     if [ -f /etc/os-release ]; then
         . /etc/os-release
         OS=$NAME
     fi
-    
+
     case "$OS" in
         "Ubuntu"*)
             log "Installing Docker on Ubuntu..."
@@ -101,25 +101,25 @@ install_docker_linux() {
             warning "Please install Docker manually: https://docs.docker.com/engine/install/"
             ;;
     esac
-    
+
     success "Docker installed. You may need to log out and back in for group changes to take effect."
 }
 
 check_prerequisites() {
     log "Checking prerequisites..."
-    
+
     local missing_deps=()
-    
+
     # Check Python
     if ! check_command python3; then
         missing_deps+=("python3")
     fi
-    
+
     # Check Git
     if ! check_command git; then
         missing_deps+=("git")
     fi
-    
+
     # Check Docker
     if ! check_command docker; then
         missing_deps+=("docker")
@@ -130,12 +130,12 @@ check_prerequisites() {
             missing_deps+=("docker-running")
         fi
     fi
-    
+
     # Check Docker Compose
     if ! docker compose version >/dev/null 2>&1 && ! docker-compose --version >/dev/null 2>&1; then
         missing_deps+=("docker-compose")
     fi
-    
+
     if [ ${#missing_deps[@]} -eq 0 ]; then
         success "All prerequisites are satisfied"
         return 0
@@ -147,35 +147,35 @@ check_prerequisites() {
 
 install_prerequisites() {
     log "Installing missing prerequisites..."
-    
+
     # Detect OS
     case "$OSTYPE" in
         darwin*)
             log "Detected macOS"
-            
+
             # Install Homebrew if not present
             if ! command -v brew >/dev/null 2>&1; then
                 log "Installing Homebrew..."
                 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
             fi
-            
+
             # Install missing packages
             if ! check_command python3; then
                 brew install python3
             fi
-            
+
             if ! check_command git; then
                 brew install git
             fi
-            
+
             if ! check_command docker; then
                 install_docker_macos
             fi
             ;;
-            
+
         linux*)
             log "Detected Linux"
-            
+
             # Update package manager
             if command -v apt-get >/dev/null 2>&1; then
                 sudo apt-get update
@@ -193,12 +193,12 @@ install_prerequisites() {
                     sudo yum install -y git
                 fi
             fi
-            
+
             if ! check_command docker; then
                 install_docker_linux
             fi
             ;;
-            
+
         *)
             error "Unsupported operating system: $OSTYPE"
             exit 1
@@ -208,7 +208,7 @@ install_prerequisites() {
 
 clone_repository() {
     log "Cloning FOGIS deployment repository..."
-    
+
     if [ -d "$INSTALL_DIR" ]; then
         log "Directory $INSTALL_DIR already exists. Updating..."
         cd "$INSTALL_DIR"
@@ -218,33 +218,33 @@ clone_repository() {
         git clone "$REPO_URL" "$INSTALL_DIR"
         cd "$INSTALL_DIR"
     fi
-    
+
     success "Repository ready at $INSTALL_DIR"
 }
 
 setup_environment() {
     log "Setting up environment..."
-    
+
     # Create log file
     mkdir -p "$(dirname "$LOG_FILE")"
     touch "$LOG_FILE"
-    
+
     # Make scripts executable
     chmod +x deployment-improvements/*.py
     chmod +x deployment-improvements/*.sh
-    
+
     success "Environment setup complete"
 }
 
 run_deployment() {
     log "Running FOGIS deployment..."
-    
+
     cd "$INSTALL_DIR"
-    
+
     # Run the master deployment script
     if python3 deployment-improvements/deploy_fogis.py; then
         success "FOGIS deployment completed successfully!"
-        
+
         echo ""
         echo "🎉 FOGIS is now running!"
         echo ""
@@ -261,11 +261,11 @@ run_deployment() {
         echo "  docker-compose -f docker-compose.yml ps"
         echo "  docker-compose -f docker-compose.yml logs -f"
         echo ""
-        
+
         return 0
     else
         error "FOGIS deployment failed"
-        
+
         echo ""
         echo "🔍 Troubleshooting:"
         echo "  1. Check logs: cat $LOG_FILE"
@@ -273,7 +273,7 @@ run_deployment() {
         echo "  3. Check setup: python3 deployment-improvements/setup_wizard.py"
         echo "  4. View service logs: docker-compose -f docker-compose.yml logs"
         echo ""
-        
+
         return 1
     fi
 }
@@ -289,7 +289,7 @@ main() {
     echo "  ✅ Run the complete deployment process"
     echo "  ✅ Validate the deployment"
     echo ""
-    
+
     # Ask for confirmation
     read -p "Continue with deployment? (y/N): " -n 1 -r
     echo
@@ -297,27 +297,27 @@ main() {
         log "Deployment cancelled by user"
         exit 0
     fi
-    
+
     log "Starting FOGIS quick deployment..."
-    
+
     # Check prerequisites
     if ! check_prerequisites; then
         log "Installing missing prerequisites..."
         install_prerequisites
-        
+
         # Re-check after installation
         if ! check_prerequisites; then
             error "Failed to install all prerequisites"
             exit 1
         fi
     fi
-    
+
     # Clone repository
     clone_repository
-    
+
     # Setup environment
     setup_environment
-    
+
     # Run deployment
     if run_deployment; then
         success "FOGIS deployment completed successfully!"
