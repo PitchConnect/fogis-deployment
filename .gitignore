@@ -14,7 +14,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# lib/ - COMMENTED OUT: This was preventing FOGIS lib/ directory from being committed
 lib64/
 parts/
 sdist/
