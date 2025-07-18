@@ -6,8 +6,23 @@
 set -e
 
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-BACKUP_DIR="fogis-credentials-backup-$TIMESTAMP"
-SOURCE_DIR="fogis-deployment"
+
+# Determine correct source and backup directories based on execution context
+if [[ -f "manage_fogis_system.sh" && -f "setup_fogis_system.sh" ]]; then
+    # Running from within fogis-deployment directory
+    SOURCE_DIR="."
+    BACKUP_DIR="../fogis-credentials-backup-$TIMESTAMP"
+elif [[ -d "fogis-deployment" && -f "fogis-deployment/manage_fogis_system.sh" ]]; then
+    # Running from parent directory (web installer context)
+    SOURCE_DIR="fogis-deployment"
+    BACKUP_DIR="fogis-credentials-backup-$TIMESTAMP"
+else
+    echo "ERROR: Cannot determine FOGIS deployment directory structure"
+    echo "Please run this script from either:"
+    echo "  1. Within the fogis-deployment directory, or"
+    echo "  2. From the parent directory containing fogis-deployment/"
+    exit 1
+fi
 
 echo "=== FOGIS Credential-Only Backup Script ==="
 echo "Timestamp: $TIMESTAMP"
@@ -35,24 +50,42 @@ else
 fi
 
 echo "2. Backing up OAuth token files..."
+TOKENS_BACKED_UP=0
+
 # Backup calendar sync token
 if [ -f "$SOURCE_DIR/data/fogis-calendar-phonebook-sync/token.json" ]; then
     mkdir -p "$BACKUP_DIR/tokens/calendar"
     cp "$SOURCE_DIR/data/fogis-calendar-phonebook-sync/token.json" "$BACKUP_DIR/tokens/calendar/"
     echo "   ✓ Calendar sync token backed up"
+    TOKENS_BACKED_UP=$((TOKENS_BACKED_UP + 1))
+else
+    echo "   ⚠ No calendar sync token found"
 fi
 
-# Backup Google Drive tokens
+# Backup Google Drive tokens (these can be used by calendar service if needed)
 if [ -f "$SOURCE_DIR/data/google-drive-service/google-drive-token.json" ]; then
     mkdir -p "$BACKUP_DIR/tokens/drive"
     cp "$SOURCE_DIR/data/google-drive-service/google-drive-token.json" "$BACKUP_DIR/tokens/drive/"
     echo "   ✓ Google Drive token backed up"
+    TOKENS_BACKED_UP=$((TOKENS_BACKED_UP + 1))
+
+    # Also backup to calendar location as fallback (both services use Google OAuth)
+    mkdir -p "$BACKUP_DIR/tokens/calendar"
+    cp "$SOURCE_DIR/data/google-drive-service/google-drive-token.json" "$BACKUP_DIR/tokens/calendar/google-drive-token.json"
+    echo "   ✓ Google Drive token also backed up for calendar service use"
 fi
 
 if [ -f "$SOURCE_DIR/data/google-drive-service/token.json" ]; then
     mkdir -p "$BACKUP_DIR/tokens/drive"
     cp "$SOURCE_DIR/data/google-drive-service/token.json" "$BACKUP_DIR/tokens/drive/token.json"
     echo "   ✓ Google Drive service token backed up"
+    TOKENS_BACKED_UP=$((TOKENS_BACKED_UP + 1))
+fi
+
+if [ $TOKENS_BACKED_UP -eq 0 ]; then
+    echo "   ⚠ No OAuth tokens found - services will require re-authentication"
+else
+    echo "   ℹ Note: Google OAuth tokens can be shared between calendar and drive services"
 fi
 
 echo "3. Backing up FOGIS credentials (.env file)..."
