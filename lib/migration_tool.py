@@ -32,7 +32,6 @@ class MigrationError(Exception):
     """Exception raised for migration-related errors"""
 
 
-
 class MigrationTool:
     """
     Migrate from legacy to portable configuration
@@ -132,14 +131,10 @@ class MigrationTool:
         env_status = "✅ Found" if current_setup["has_env_file"] else "❌ Not found"
         print(f"   • .env file: {env_status}")
 
-        config_status = (
-            "✅ Found" if current_setup["has_config_json"] else "❌ Not found"
-        )
+        config_status = "✅ Found" if current_setup["has_config_json"] else "❌ Not found"
         print(f"   • config.json: {config_status}")
 
-        creds_status = (
-            "✅ Found" if current_setup["has_credentials"] else "❌ Not found"
-        )
+        creds_status = "✅ Found" if current_setup["has_credentials"] else "❌ Not found"
         print(f"   • OAuth credentials: {creds_status}")
 
         tokens_status = "✅ Found" if current_setup["has_tokens"] else "❌ Not found"
@@ -382,9 +377,9 @@ class MigrationTool:
 
         # Logging configuration
         if os.getenv("LOG_LEVEL"):
-            config.setdefault("services", {}).setdefault("logging", {})["level"] = (
-                os.getenv("LOG_LEVEL")
-            )
+            config.setdefault("services", {}).setdefault("logging", {})[
+                "level"
+            ] = os.getenv("LOG_LEVEL")
         if os.getenv("DEBUG_MODE"):
             config.setdefault("services", {}).setdefault("logging", {})[
                 "debug_mode"
@@ -427,9 +422,9 @@ class MigrationTool:
             ] = calendar_config["CALENDAR_ID"]
 
         if "SYNC_TAG" in calendar_config:
-            config.setdefault("google", {}).setdefault("calendar", {})["sync_tag"] = (
-                calendar_config["SYNC_TAG"]
-            )
+            config.setdefault("google", {}).setdefault("calendar", {})[
+                "sync_tag"
+            ] = calendar_config["SYNC_TAG"]
 
         if "DAYS_TO_KEEP_PAST_EVENTS" in calendar_config:
             config.setdefault("google", {}).setdefault("calendar", {})[
@@ -437,9 +432,9 @@ class MigrationTool:
             ] = calendar_config["DAYS_TO_KEEP_PAST_EVENTS"]
 
         if "SCOPES" in calendar_config:
-            config.setdefault("google", {}).setdefault("oauth", {})["scopes"] = (
-                calendar_config["SCOPES"]
-            )
+            config.setdefault("google", {}).setdefault("oauth", {})[
+                "scopes"
+            ] = calendar_config["SCOPES"]
 
         # FOGIS configuration
         if "USER_REFEREE_NUMBER" in calendar_config:

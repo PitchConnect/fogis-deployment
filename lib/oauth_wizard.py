@@ -26,7 +26,6 @@ class OAuthWizardError(Exception):
     """Exception raised for OAuth wizard errors"""
 
 
-
 class OAuthWizard:
     """
     OAuth Authentication Wizard for FOGIS deployment

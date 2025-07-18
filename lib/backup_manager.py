@@ -21,7 +21,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -34,13 +33,13 @@ class BackupError(Exception):
 class BackupManager:
     """
     Comprehensive backup and restore manager for FOGIS deployment
-    
+
     Supports different backup types:
     - complete: Full system backup including all files and state
     - config: Configuration files only
     - credentials: OAuth credentials and tokens only
     """
-    
+
     def __init__(self, backup_dir: str = "backups"):
         """
         Initialize backup manager
@@ -51,50 +50,46 @@ class BackupManager:
         self.backup_dir = Path(backup_dir)
         self.backup_dir.mkdir(exist_ok=True)
         self.base_path = Path.cwd()  # Current working directory for subprocess calls
-        
+
         # Define backup components
         self.config_files = [
             "fogis-config.yaml",
             ".env",
-            "fogis-calendar-phonebook-sync/config.json"
+            "fogis-calendar-phonebook-sync/config.json",
         ]
-        
+
         self.credential_files = [
             "credentials.json",
-            "credentials/google-credentials.json"
+            "credentials/google-credentials.json",
         ]
-        
+
         self.token_files = [
             "data/google-drive-service/google-drive-token.json",
-            "data/calendar-sync/calendar-token.json", 
-            "fogis-calendar-phonebook-sync/token.json"
+            "data/calendar-sync/calendar-token.json",
+            "fogis-calendar-phonebook-sync/token.json",
         ]
-        
-        self.data_directories = [
-            "data/",
-            "logs/",
-            "credentials/"
-        ]
-    
+
+        self.data_directories = ["data/", "logs/", "credentials/"]
+
     def create_backup(self, backup_type: str = "complete") -> str:
         """
         Create a system backup
-        
+
         Args:
             backup_type: Type of backup ('complete', 'config', 'credentials')
-            
+
         Returns:
             Path to created backup file
         """
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         backup_name = f"fogis-backup-{backup_type}-{timestamp}"
-        
+
         logger.info(f"Creating {backup_type} backup: {backup_name}")
-        
+
         with tempfile.TemporaryDirectory() as temp_dir:
             backup_staging = Path(temp_dir) / backup_name
             backup_staging.mkdir()
-            
+
             try:
                 # Create backup based on type
                 if backup_type == "complete":
@@ -105,35 +100,37 @@ class BackupManager:
                     self._backup_credentials(backup_staging)
                 else:
                     raise BackupError(f"Unknown backup type: {backup_type}")
-                
+
                 # Create backup manifest
                 manifest = self._create_backup_manifest(backup_staging, backup_type)
                 self._save_manifest(backup_staging, manifest)
-                
+
                 # Create compressed archive
-                archive_path = self._create_compressed_archive(backup_staging, backup_name)
-                
+                archive_path = self._create_compressed_archive(
+                    backup_staging, backup_name
+                )
+
                 # Validate backup
                 if self.validate_backup(archive_path):
                     logger.info(f"Backup created successfully: {archive_path}")
                     return str(archive_path)
                 else:
                     raise BackupError("Backup validation failed")
-                    
+
             except Exception as e:
                 logger.error(f"Backup creation failed: {e}")
                 raise BackupError(f"Failed to create backup: {e}")
-    
+
     def _backup_complete_system(self, backup_dir: Path) -> None:
         """Backup complete system including all components"""
         logger.info("Backing up complete system...")
-        
+
         # Backup configuration
         self._backup_configuration(backup_dir)
-        
+
         # Backup credentials and tokens
         self._backup_credentials(backup_dir)
-        
+
         # Backup data directories
         for data_dir in self.data_directories:
             if os.path.exists(data_dir):
@@ -144,35 +141,35 @@ class BackupManager:
                 else:
                     shutil.copy2(data_dir, dest_dir)
                 logger.debug(f"Backed up data directory: {data_dir}")
-        
+
         # Backup docker-compose files
         compose_files = ["docker-compose.yml", "docker-compose.override.yml"]
         for compose_file in compose_files:
             if os.path.exists(compose_file):
                 shutil.copy2(compose_file, backup_dir / compose_file)
                 logger.debug(f"Backed up compose file: {compose_file}")
-    
+
     def _backup_configuration(self, backup_dir: Path) -> None:
         """Backup configuration files only"""
         logger.info("Backing up configuration files...")
-        
+
         config_backup_dir = backup_dir / "config"
         config_backup_dir.mkdir(exist_ok=True)
-        
+
         for config_file in self.config_files:
             if os.path.exists(config_file):
                 dest_path = config_backup_dir / Path(config_file).name
                 dest_path.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(config_file, dest_path)
                 logger.debug(f"Backed up config file: {config_file}")
-    
+
     def _backup_credentials(self, backup_dir: Path) -> None:
         """Backup credentials and tokens"""
         logger.info("Backing up credentials and tokens...")
-        
+
         creds_backup_dir = backup_dir / "credentials"
         creds_backup_dir.mkdir(exist_ok=True)
-        
+
         # Backup credential files
         for cred_file in self.credential_files:
             if os.path.exists(cred_file):
@@ -181,65 +178,77 @@ class BackupManager:
                 # Set secure permissions
                 os.chmod(dest_path, 0o600)
                 logger.debug(f"Backed up credential file: {cred_file}")
-        
+
         # Backup token files
         tokens_backup_dir = creds_backup_dir / "tokens"
         tokens_backup_dir.mkdir(exist_ok=True)
-        
+
         for token_file in self.token_files:
             if os.path.exists(token_file):
                 dest_path = tokens_backup_dir / Path(token_file).name
                 shutil.copy2(token_file, dest_path)
                 os.chmod(dest_path, 0o600)
                 logger.debug(f"Backed up token file: {token_file}")
-    
-    def _create_backup_manifest(self, backup_dir: Path, backup_type: str) -> Dict[str, Any]:
+
+    def _create_backup_manifest(
+        self, backup_dir: Path, backup_type: str
+    ) -> Dict[str, Any]:
         """Create backup manifest with metadata"""
         manifest = {
             "backup_info": {
                 "type": backup_type,
                 "created_at": datetime.now().isoformat(),
                 "version": "1.0",
-                "system": dict(zip(['sysname', 'nodename', 'release', 'version', 'machine'],
-                                   os.uname())) if hasattr(os, 'uname') else {}
+                "system": dict(
+                    zip(
+                        ["sysname", "nodename", "release", "version", "machine"],
+                        os.uname(),
+                    )
+                )
+                if hasattr(os, "uname")
+                else {},
             },
             "files": [],
-            "directories": []
+            "directories": [],
         }
-        
+
         # Catalog all files in backup
         for root, dirs, files in os.walk(backup_dir):
             rel_root = Path(root).relative_to(backup_dir)
-            
+
             for directory in dirs:
                 manifest["directories"].append(str(rel_root / directory))
-            
+
             for file in files:
                 file_path = Path(root) / file
                 rel_path = file_path.relative_to(backup_dir)
-                
-                manifest["files"].append({
-                    "path": str(rel_path),
-                    "size": file_path.stat().st_size,
-                    "modified": datetime.fromtimestamp(file_path.stat().st_mtime).isoformat()
-                })
-        
+
+                manifest["files"].append(
+                    {
+                        "path": str(rel_path),
+                        "size": file_path.stat().st_size,
+                        "modified": datetime.fromtimestamp(
+                            file_path.stat().st_mtime
+                        ).isoformat(),
+                    }
+                )
+
         return manifest
-    
+
     def _save_manifest(self, backup_dir: Path, manifest: Dict[str, Any]) -> None:
         """Save backup manifest to file"""
         manifest_path = backup_dir / "backup_manifest.json"
-        with open(manifest_path, 'w') as f:
+        with open(manifest_path, "w") as f:
             json.dump(manifest, f, indent=2)
         logger.debug("Backup manifest created")
-    
+
     def _create_compressed_archive(self, backup_dir: Path, backup_name: str) -> Path:
         """Create compressed tar archive of backup"""
         archive_path = self.backup_dir / f"{backup_name}.tar.gz"
-        
+
         with tarfile.open(archive_path, "w:gz") as tar:
             tar.add(backup_dir, arcname=backup_name)
-        
+
         logger.debug(f"Created compressed archive: {archive_path}")
         return archive_path
 
@@ -303,7 +312,7 @@ class BackupManager:
         with tarfile.open(backup_file, "r:gz") as tar:
             # Security check: ensure no path traversal
             for member in tar.getmembers():
-                if member.name.startswith('/') or '..' in member.name:
+                if member.name.startswith("/") or ".." in member.name:
                     raise BackupError(f"Unsafe path in backup: {member.name}")
 
             tar.extractall(extract_dir)  # nosec B202 - validated above
@@ -323,7 +332,7 @@ class BackupManager:
         if not manifest_path.exists():
             raise BackupError("Backup manifest not found")
 
-        with open(manifest_path, 'r') as f:
+        with open(manifest_path, "r") as f:
             return json.load(f)
 
     def _restore_complete_system(self, extract_dir: Path) -> None:
@@ -427,16 +436,18 @@ class BackupManager:
         mapping = {
             "fogis-config.yaml": Path("fogis-config.yaml"),
             ".env": Path(".env"),
-            "config.json": Path("fogis-calendar-phonebook-sync/config.json")
+            "config.json": Path("fogis-calendar-phonebook-sync/config.json"),
         }
         return mapping.get(filename)
 
     def _map_token_file_destination(self, filename: str) -> Optional[Path]:
         """Map token filename to destination path"""
         mapping = {
-            "google-drive-token.json": Path("data/google-drive-service/google-drive-token.json"),
+            "google-drive-token.json": Path(
+                "data/google-drive-service/google-drive-token.json"
+            ),
             "calendar-token.json": Path("data/calendar-sync/calendar-token.json"),
-            "token.json": Path("fogis-calendar-phonebook-sync/token.json")
+            "token.json": Path("fogis-calendar-phonebook-sync/token.json"),
         }
         return mapping.get(filename)
 
@@ -466,8 +477,7 @@ class BackupManager:
 
                 # Check for manifest
                 manifest_found = any(
-                    member.name.endswith("backup_manifest.json")
-                    for member in members
+                    member.name.endswith("backup_manifest.json") for member in members
                 )
 
                 if not manifest_found:
@@ -532,7 +542,7 @@ class BackupManager:
                     tar.extract(manifest_member, extract_dir)
                     manifest_path = extract_dir / manifest_member.name
 
-                    with open(manifest_path, 'r') as f:
+                    with open(manifest_path, "r") as f:
                         manifest = json.load(f)
 
                     # Add file information
@@ -585,7 +595,9 @@ class BackupManager:
         backups = self.list_backups()
 
         if len(backups) <= keep_count:
-            logger.info(f"No cleanup needed. {len(backups)} backups found, keeping {keep_count}")
+            logger.info(
+                f"No cleanup needed. {len(backups)} backups found, keeping {keep_count}"
+            )
             return 0
 
         backups_to_delete = backups[keep_count:]
@@ -607,7 +619,7 @@ class BackupManager:
                 "credentials/*.json",
                 "data/*/token.json",
                 "data/*/*.json",
-                ".env"
+                ".env",
             ]
 
             for pattern in credential_patterns:
@@ -644,11 +656,12 @@ class BackupManager:
         """Check OAuth status and offer setup guidance"""
         try:
             import subprocess
+
             result = subprocess.run(
                 ["./manage_fogis_system.sh", "oauth-status"],
                 capture_output=True,
                 text=True,
-                cwd=self.base_path
+                cwd=self.base_path,
             )
 
             if "Setup complete: ❌" in result.stdout:
@@ -662,15 +675,17 @@ class BackupManager:
         """Check service status and offer to start if needed"""
         try:
             import subprocess
+
             result = subprocess.run(
                 ["docker", "compose", "ps", "--format", "json"],
                 capture_output=True,
                 text=True,
-                cwd=self.base_path
+                cwd=self.base_path,
             )
 
             if result.returncode == 0:
                 import json
+
                 services = json.loads(result.stdout) if result.stdout.strip() else []
                 running_services = [s for s in services if s.get("State") == "running"]
 
@@ -685,11 +700,12 @@ class BackupManager:
         """Validate configuration after restore"""
         try:
             import subprocess
+
             result = subprocess.run(
                 ["./manage_fogis_system.sh", "config-validate"],
                 capture_output=True,
                 text=True,
-                cwd=self.base_path
+                cwd=self.base_path,
             )
 
             if result.returncode != 0:
@@ -733,7 +749,9 @@ def main():
             if backups:
                 print(f"Found {len(backups)} backups:")
                 for backup in backups:
-                    print(f"  {backup['file_path']} ({backup['type']}) - {backup['created_at']}")
+                    print(
+                        f"  {backup['file_path']} ({backup['type']}) - {backup['created_at']}"
+                    )
             else:
                 print("No backups found")
 

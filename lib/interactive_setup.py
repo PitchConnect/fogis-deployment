@@ -29,7 +29,6 @@ class SetupWizardError(Exception):
     """Exception raised for setup wizard errors"""
 
 
-
 class InteractiveSetup:
     """
     Interactive setup wizard for FOGIS deployment

@@ -13,7 +13,6 @@ This module provides a unified interface for configuration management that suppo
 import json
 import logging
 import os
-
 from typing import Any, Dict, Optional, Union
 
 import yaml
@@ -26,7 +25,6 @@ logger = logging.getLogger(__name__)
 
 class ConfigurationError(Exception):
     """Exception raised for configuration-related errors"""
-
 
 
 class ConfigManager:
@@ -285,9 +283,9 @@ class ConfigManager:
 
         # Logging configuration
         if os.getenv("LOG_LEVEL"):
-            config.setdefault("services", {}).setdefault("logging", {})["level"] = (
-                os.getenv("LOG_LEVEL")
-            )
+            config.setdefault("services", {}).setdefault("logging", {})[
+                "level"
+            ] = os.getenv("LOG_LEVEL")
         if os.getenv("DEBUG_MODE"):
             config.setdefault("services", {}).setdefault("logging", {})[
                 "debug_mode"
@@ -316,14 +314,14 @@ class ConfigManager:
             ] = calendar_config["CALENDAR_ID"]
 
         if "SYNC_TAG" in calendar_config:
-            config.setdefault("google", {}).setdefault("calendar", {})["sync_tag"] = (
-                calendar_config["SYNC_TAG"]
-            )
+            config.setdefault("google", {}).setdefault("calendar", {})[
+                "sync_tag"
+            ] = calendar_config["SYNC_TAG"]
 
         if "SCOPES" in calendar_config:
-            config.setdefault("google", {}).setdefault("oauth", {})["scopes"] = (
-                calendar_config["SCOPES"]
-            )
+            config.setdefault("google", {}).setdefault("oauth", {})[
+                "scopes"
+            ] = calendar_config["SCOPES"]
 
         # FOGIS configuration
         if "USER_REFEREE_NUMBER" in calendar_config:

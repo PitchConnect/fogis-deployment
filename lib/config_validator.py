@@ -26,7 +26,6 @@ class ConfigValidationError(Exception):
     """Exception raised for configuration validation errors"""
 
 
-
 class ConfigValidator:
     """
     Validate configuration structure and required fields
