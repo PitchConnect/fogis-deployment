@@ -27,17 +27,17 @@ class IaCGeneratorError(Exception):
 class IaCGenerator:
     """
     Infrastructure as Code generator for FOGIS deployment
-    
+
     Generates deployment templates for multiple platforms:
     - Terraform: AWS, GCP, Azure infrastructure
     - Ansible: Server configuration and deployment
     - Kubernetes: Container orchestration
     """
-    
+
     def __init__(self, config_file: str = "fogis-config.yaml"):
         """
         Initialize IaC generator
-        
+
         Args:
             config_file: Path to FOGIS configuration file
         """
@@ -45,84 +45,84 @@ class IaCGenerator:
         self.config = self._load_config()
         self.templates_dir = Path("templates/iac")
         self.templates_dir.mkdir(parents=True, exist_ok=True)
-    
+
     def _load_config(self) -> Dict[str, Any]:
         """Load FOGIS configuration"""
         try:
-            with open(self.config_file, 'r') as f:
+            with open(self.config_file, "r") as f:
                 return yaml.safe_load(f)
         except Exception as e:
             raise IaCGeneratorError(f"Failed to load config: {e}")
-    
+
     def generate_all_templates(self) -> Dict[str, List[str]]:
         """
         Generate all IaC templates
-        
+
         Returns:
             Dictionary mapping platform to list of generated files
         """
         logger.info("Generating all Infrastructure as Code templates...")
-        
+
         results = {
             "terraform": self.generate_terraform_templates(),
             "ansible": self.generate_ansible_templates(),
-            "kubernetes": self.generate_kubernetes_templates()
+            "kubernetes": self.generate_kubernetes_templates(),
         }
-        
+
         logger.info("All IaC templates generated successfully")
         return results
-    
+
     def generate_terraform_templates(self) -> List[str]:
         """
         Generate Terraform templates
-        
+
         Returns:
             List of generated Terraform files
         """
         logger.info("Generating Terraform templates...")
-        
+
         terraform_dir = self.templates_dir / "terraform"
         terraform_dir.mkdir(exist_ok=True)
-        
+
         generated_files = []
-        
+
         # Generate main.tf
         main_tf = self._generate_terraform_main()
         main_tf_path = terraform_dir / "main.tf"
-        with open(main_tf_path, 'w') as f:
+        with open(main_tf_path, "w") as f:
             f.write(main_tf)
         generated_files.append(str(main_tf_path))
-        
+
         # Generate variables.tf
         variables_tf = self._generate_terraform_variables()
         variables_tf_path = terraform_dir / "variables.tf"
-        with open(variables_tf_path, 'w') as f:
+        with open(variables_tf_path, "w") as f:
             f.write(variables_tf)
         generated_files.append(str(variables_tf_path))
-        
+
         # Generate outputs.tf
         outputs_tf = self._generate_terraform_outputs()
         outputs_tf_path = terraform_dir / "outputs.tf"
-        with open(outputs_tf_path, 'w') as f:
+        with open(outputs_tf_path, "w") as f:
             f.write(outputs_tf)
         generated_files.append(str(outputs_tf_path))
-        
+
         # Generate terraform.tfvars.example
         tfvars = self._generate_terraform_tfvars()
         tfvars_path = terraform_dir / "terraform.tfvars.example"
-        with open(tfvars_path, 'w') as f:
+        with open(tfvars_path, "w") as f:
             f.write(tfvars)
         generated_files.append(str(tfvars_path))
-        
+
         logger.info(f"Generated {len(generated_files)} Terraform files")
         return generated_files
-    
+
     def _generate_terraform_main(self) -> str:
         """Generate Terraform main configuration"""
         services = self.config.get("services", {})
         ports = services.get("ports", {})
-        
-        return f'''# FOGIS Deployment - Terraform Configuration
+
+        return f"""# FOGIS Deployment - Terraform Configuration
 # Generated from {self.config_file}
 
 terraform {{
@@ -285,11 +285,11 @@ resource "aws_eip" "fogis_eip" {{
     Name = "fogis-eip"
   }}
 }}
-'''
-    
+"""
+
     def _generate_terraform_variables(self) -> str:
         """Generate Terraform variables configuration"""
-        return '''# FOGIS Deployment - Terraform Variables
+        return """# FOGIS Deployment - Terraform Variables
 
 variable "aws_region" {
   description = "AWS region for deployment"
@@ -349,11 +349,11 @@ variable "docker_compose_version" {
   type        = string
   default     = "2.21.0"
 }
-'''
-    
+"""
+
     def _generate_terraform_outputs(self) -> str:
         """Generate Terraform outputs configuration"""
-        return '''# FOGIS Deployment - Terraform Outputs
+        return """# FOGIS Deployment - Terraform Outputs
 
 output "vpc_id" {
   description = "ID of the VPC"
@@ -397,11 +397,11 @@ output "fogis_urls" {
     google_drive  = "http://${aws_eip.fogis_eip.public_ip}:8081"
   }
 }
-'''
+"""
 
     def _generate_terraform_tfvars(self) -> str:
         """Generate Terraform tfvars example"""
-        return '''# FOGIS Deployment - Terraform Variables Example
+        return """# FOGIS Deployment - Terraform Variables Example
 # Copy this file to terraform.tfvars and customize values
 
 # AWS Configuration
@@ -423,7 +423,7 @@ key_pair_name = "your-key-pair-name"  # Replace with your AWS key pair
 
 # Software Versions
 docker_compose_version = "2.21.0"
-'''
+"""
 
     def generate_ansible_templates(self) -> List[str]:
         """
@@ -442,14 +442,14 @@ docker_compose_version = "2.21.0"
         # Generate playbook.yml
         playbook = self._generate_ansible_playbook()
         playbook_path = ansible_dir / "playbook.yml"
-        with open(playbook_path, 'w') as f:
+        with open(playbook_path, "w") as f:
             f.write(playbook)
         generated_files.append(str(playbook_path))
 
         # Generate inventory.yml
         inventory = self._generate_ansible_inventory()
         inventory_path = ansible_dir / "inventory.yml"
-        with open(inventory_path, 'w') as f:
+        with open(inventory_path, "w") as f:
             f.write(inventory)
         generated_files.append(str(inventory_path))
 
@@ -459,7 +459,7 @@ docker_compose_version = "2.21.0"
 
         group_vars = self._generate_ansible_group_vars()
         group_vars_path = group_vars_dir / "all.yml"
-        with open(group_vars_path, 'w') as f:
+        with open(group_vars_path, "w") as f:
             f.write(group_vars)
         generated_files.append(str(group_vars_path))
 
@@ -470,7 +470,7 @@ docker_compose_version = "2.21.0"
         """Generate Ansible playbook"""
         services = self.config.get("services", {})
 
-        return f'''---
+        return f"""---
 # FOGIS Deployment - Ansible Playbook
 # Generated from {self.config_file}
 
@@ -609,11 +609,11 @@ docker_compose_version = "2.21.0"
     - name: reload systemd
       systemd:
         daemon_reload: yes
-'''
+"""
 
     def _generate_ansible_inventory(self) -> str:
         """Generate Ansible inventory"""
-        return '''# FOGIS Deployment - Ansible Inventory
+        return """# FOGIS Deployment - Ansible Inventory
 # Generated inventory file
 
 all:
@@ -634,14 +634,14 @@ all:
         fogis_repo_url: "https://github.com/PitchConnect/fogis-deployment.git"
         fogis_repo_branch: "main"
         # oauth_credentials_file: "/path/to/your/credentials.json"
-'''
+"""
 
     def _generate_ansible_group_vars(self) -> str:
         """Generate Ansible group variables"""
         fogis_config = self.config.get("fogis", {})
         services = self.config.get("services", {})
 
-        return f'''---
+        return f"""---
 # FOGIS Deployment - Ansible Group Variables
 # Generated from {self.config_file}
 
@@ -673,7 +673,7 @@ log_retention_days: 30
 backup_enabled: true
 backup_schedule: "0 2 * * *"  # Daily at 2 AM
 backup_retention_days: 30
-'''
+"""
 
     def generate_kubernetes_templates(self) -> List[str]:
         """
@@ -692,35 +692,35 @@ backup_retention_days: 30
         # Generate namespace
         namespace = self._generate_k8s_namespace()
         namespace_path = k8s_dir / "namespace.yaml"
-        with open(namespace_path, 'w') as f:
+        with open(namespace_path, "w") as f:
             f.write(namespace)
         generated_files.append(str(namespace_path))
 
         # Generate configmap
         configmap = self._generate_k8s_configmap()
         configmap_path = k8s_dir / "configmap.yaml"
-        with open(configmap_path, 'w') as f:
+        with open(configmap_path, "w") as f:
             f.write(configmap)
         generated_files.append(str(configmap_path))
 
         # Generate secrets
         secrets = self._generate_k8s_secrets()
         secrets_path = k8s_dir / "secrets.yaml"
-        with open(secrets_path, 'w') as f:
+        with open(secrets_path, "w") as f:
             f.write(secrets)
         generated_files.append(str(secrets_path))
 
         # Generate deployments
         deployments = self._generate_k8s_deployments()
         deployments_path = k8s_dir / "deployments.yaml"
-        with open(deployments_path, 'w') as f:
+        with open(deployments_path, "w") as f:
             f.write(deployments)
         generated_files.append(str(deployments_path))
 
         # Generate services
         services = self._generate_k8s_services()
         services_path = k8s_dir / "services.yaml"
-        with open(services_path, 'w') as f:
+        with open(services_path, "w") as f:
             f.write(services)
         generated_files.append(str(services_path))
 
@@ -729,7 +729,7 @@ backup_retention_days: 30
 
     def _generate_k8s_namespace(self) -> str:
         """Generate Kubernetes namespace"""
-        return '''# FOGIS Deployment - Kubernetes Namespace
+        return """# FOGIS Deployment - Kubernetes Namespace
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -737,14 +737,14 @@ metadata:
   labels:
     name: fogis
     app: fogis-deployment
-'''
+"""
 
     def _generate_k8s_configmap(self) -> str:
         """Generate Kubernetes ConfigMap"""
         fogis_config = self.config.get("fogis", {})
         services = self.config.get("services", {})
 
-        return f'''# FOGIS Deployment - Kubernetes ConfigMap
+        return f"""# FOGIS Deployment - Kubernetes ConfigMap
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -768,11 +768,11 @@ data:
   # Google Configuration
   GOOGLE_CALENDAR_ID: "primary"
   GOOGLE_DRIVE_FOLDER: "WhatsApp_Group_Assets"
-'''
+"""
 
     def _generate_k8s_secrets(self) -> str:
         """Generate Kubernetes Secrets"""
-        return '''# FOGIS Deployment - Kubernetes Secrets
+        return """# FOGIS Deployment - Kubernetes Secrets
 # Note: Replace base64 encoded values with your actual credentials
 apiVersion: v1
 kind: Secret
@@ -802,14 +802,14 @@ data:
   CALENDAR_TOKEN: ""
   DRIVE_TOKEN: ""
   CONTACTS_TOKEN: ""
-'''
+"""
 
     def _generate_k8s_deployments(self) -> str:
         """Generate Kubernetes Deployments"""
         services = self.config.get("services", {})
         ports = services.get("ports", {})
 
-        return f'''# FOGIS Deployment - Kubernetes Deployments
+        return f"""# FOGIS Deployment - Kubernetes Deployments
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -933,14 +933,14 @@ spec:
           items:
           - key: DRIVE_TOKEN
             path: drive-token.json
-'''
+"""
 
     def _generate_k8s_services(self) -> str:
         """Generate Kubernetes Services"""
         services = self.config.get("services", {})
         ports = services.get("ports", {})
 
-        return f'''# FOGIS Deployment - Kubernetes Services
+        return f"""# FOGIS Deployment - Kubernetes Services
 apiVersion: v1
 kind: Service
 metadata:
@@ -992,7 +992,7 @@ spec:
     targetPort: {ports.get("calendar_sync", 8080)}
     protocol: TCP
   type: LoadBalancer
-'''
+"""
 
 
 def main():

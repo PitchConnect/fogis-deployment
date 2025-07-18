@@ -11,11 +11,10 @@ existing file formats and structures.
 import json
 import logging
 import os
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
-
-import sys
 
 # Debug information
 print(f"DEBUG: Python executable: {sys.executable}", file=sys.stderr)
@@ -23,13 +22,16 @@ print(f"DEBUG: Python path: {sys.path[:3]}", file=sys.stderr)
 
 try:
     import yaml
+
     print("DEBUG: YAML import successful", file=sys.stderr)
 except ImportError as e:
     print(f"DEBUG: YAML import failed: {e}", file=sys.stderr)
     print("DEBUG: Attempting to install PyYAML...", file=sys.stderr)
     import subprocess
+
     subprocess.check_call([sys.executable, "-m", "pip", "install", "pyyaml"])
     import yaml
+
     print("DEBUG: YAML installed and imported successfully", file=sys.stderr)
 
 # Configure logging
@@ -39,7 +41,6 @@ logger = logging.getLogger(__name__)
 
 class ConfigGenerationError(Exception):
     """Exception raised for configuration generation errors"""
-
 
 
 class ConfigGenerator:
