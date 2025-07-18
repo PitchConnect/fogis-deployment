@@ -302,6 +302,17 @@ grep "FOGIS_USERNAME" .env
 ./setup_google_oauth.sh --help
 ```
 
+## **📚 Additional Documentation**
+
+### **Service-Specific Guides**
+- **[Calendar Service Authentication](CALENDAR_SERVICE_AUTHENTICATION.md)** - Detailed guide for calendar service OAuth token setup and troubleshooting
+- **[Match Processor Service Behavior](MATCH_PROCESSOR_SERVICE_BEHAVIOR.md)** - Understanding the match processor's intended restart behavior and monitoring
+
+### **Quick Reference**
+- **Calendar Service Token Fix**: `docker exec fogis-calendar-phonebook-sync cp /app/data/token.json /app/token.json`
+- **Enhanced Credential Restoration**: `./restore_fogis_credentials.sh backup-dir --auto --validate`
+- **Match Processor Monitoring**: Service restarts are normal behavior - check logs for processing activity
+
 ## **🔗 Related Repositories**
 
 This deployment orchestrates services from:
