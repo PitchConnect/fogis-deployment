@@ -159,6 +159,134 @@ tail -f logs/cron/match-processing.log
 - **Permission denied:** `chmod +x *.sh`
 - **Cron not working:** Check system cron permissions
 
+### **🔐 Google OAuth Authentication Issues**
+
+#### **Quick OAuth Status Check:**
+```bash
+# Check current OAuth status
+./setup_google_oauth.sh --check-only
+
+# View Google Drive service status
+curl -s http://localhost:9085/health | jq .
+```
+
+#### **Common OAuth Problems & Solutions:**
+
+**❌ Problem: "Authentication required. Visit /authorize_gdrive to authenticate"**
+```bash
+# Solution 1: Run OAuth setup wizard
+./setup_google_oauth.sh
+
+# Solution 2: Restore from backup
+./restore_fogis_credentials.sh --auto --validate
+
+# Solution 3: Manual authorization
+# Visit: http://localhost:9085/authorize_gdrive
+```
+
+**❌ Problem: "Google credentials file missing"**
+```bash
+# Check if credentials exist
+ls -la credentials/google-credentials.json
+
+# If missing, run setup
+./setup_google_oauth.sh
+
+# Or restore from backup
+./restore_fogis_credentials.sh --auto
+```
+
+**❌ Problem: "Test credentials detected"**
+- Your `google-credentials.json` contains test/example credentials
+- Visit [Google Cloud Console](https://console.cloud.google.com/) to create production credentials
+- Replace the file and restart services: `./manage_fogis_system.sh restart`
+
+**❌ Problem: OAuth tokens expired**
+```bash
+# Services automatically refresh tokens, but if manual refresh needed:
+docker restart google-drive-service
+
+# Check if refresh worked
+curl -s http://localhost:9085/health | jq '.auth_status'
+```
+
+#### **OAuth Setup from Scratch:**
+
+**Step 1: Create Google Cloud Project**
+1. Visit: https://console.cloud.google.com/
+2. Create new project: "FOGIS-OAuth"
+3. Enable APIs: Google Drive API, Google Calendar API, People API
+
+**Step 2: Create OAuth Credentials**
+1. Go to "APIs & Services" → "Credentials"
+2. Create "OAuth client ID" → "Web application"
+3. Add redirect URIs:
+   - `http://localhost:9085/oauth2callback`
+   - `http://localhost:9084/oauth2callback`
+4. Download as `credentials/google-credentials.json`
+
+**Step 3: Complete Authorization**
+```bash
+# Start services and run OAuth flow
+./setup_google_oauth.sh --auto-start
+```
+
+#### **OAuth Troubleshooting Commands:**
+```bash
+# Comprehensive OAuth diagnosis
+./setup_google_oauth.sh --check-only
+
+# Validate credentials file
+./restore_fogis_credentials.sh --validate
+
+# Check service logs for OAuth errors
+docker logs google-drive-service --tail 20
+
+# Test OAuth connectivity
+curl -s http://localhost:9085/health
+
+# Restart OAuth services
+docker restart google-drive-service fogis-calendar-phonebook-sync
+```
+
+#### **OAuth Service Health Indicators:**
+- ✅ **Healthy**: `"auth_status": "authenticated"`
+- ❌ **Needs Setup**: `"auth_status": "unauthenticated"`
+- ⚠️ **Check Logs**: Service not responding
+
+### **🔧 Credential Management**
+
+#### **Backup Credentials:**
+```bash
+# Create comprehensive backup
+./create_credential_backup.sh
+
+# Backup location: fogis-credentials-backup-YYYYMMDD-HHMMSS/
+```
+
+#### **Restore Credentials:**
+```bash
+# Auto-detect and restore latest backup
+./restore_fogis_credentials.sh --auto --validate
+
+# Restore specific backup
+./restore_fogis_credentials.sh backup-directory --auto
+
+# Interactive restoration
+./restore_fogis_credentials.sh --validate
+```
+
+#### **Credential Validation:**
+```bash
+# Validate all credentials
+./restore_fogis_credentials.sh --validate
+
+# Check specific components
+ls -la credentials/google-credentials.json
+ls -la data/google-drive-service/
+grep "FOGIS_USERNAME" .env
+```
+
 ### **Get Help:**
 ```bash
 # System diagnostics
@@ -169,6 +297,9 @@ tail -f logs/cron/match-processing.log
 
 # Test manually
 ./manage_fogis_system.sh test
+
+# OAuth-specific help
+./setup_google_oauth.sh --help
 ```
 
 ## **🔗 Related Repositories**
