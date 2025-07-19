@@ -20,6 +20,8 @@ AUTO_MODE=false
 VALIDATE_MODE=false
 BACKUP_DIR=""
 TARGET_DIR=""  # Will be determined based on execution context
+AUTO_OAUTH=true  # Enable automatic OAuth setup by default
+INTERACTIVE_MODE=true  # Enable interactive prompts by default
 
 # Function to print colored output
 log_info() {
@@ -52,6 +54,8 @@ Options:
   --auto        Run in automatic mode (no prompts)
   --validate    Validate restored credentials
   --target DIR  Target directory (default: fogis-deployment)
+  --no-oauth    Skip automatic OAuth setup (manual setup required)
+  --headless    Run in headless mode (no interactive prompts)
   --help        Show this help message
 
 Examples:
@@ -81,6 +85,15 @@ while [[ $# -gt 0 ]]; do
         --target)
             TARGET_DIR="$2"
             shift 2
+            ;;
+        --no-oauth)
+            AUTO_OAUTH=false
+            shift
+            ;;
+        --headless)
+            INTERACTIVE_MODE=false
+            AUTO_OAUTH=false  # Disable OAuth in headless mode by default
+            shift
             ;;
         --help)
             show_usage
@@ -558,6 +571,179 @@ EOF
     log_success "Post-restoration service setup completed"
 }
 
+# Function to check OAuth automation prerequisites
+check_oauth_prerequisites() {
+    log_info "Checking OAuth automation prerequisites..."
+
+    # Check if Google credentials exist
+    if [ ! -f "credentials.json" ] && [ ! -f "credentials/google-credentials.json" ]; then
+        log_warning "No Google OAuth credentials found"
+        log_info "OAuth automation requires Google credentials file"
+        log_info "Create credentials at: https://console.cloud.google.com/"
+        return 1
+    fi
+
+    # Check if authentication script exists
+    if [ ! -f "authenticate_all_services.py" ]; then
+        log_warning "OAuth authentication script not found"
+        log_info "Expected: authenticate_all_services.py"
+        return 1
+    fi
+
+    # Check Python dependencies
+    if ! python3 -c "import google_auth_oauthlib, requests" 2>/dev/null; then
+        log_warning "Missing Python dependencies for OAuth"
+        log_info "Install with: pip3 install google-auth-oauthlib requests"
+        return 1
+    fi
+
+    # Check if services are running
+    local services_running=true
+    for service in "fogis-calendar-phonebook-sync" "google-drive-service"; do
+        if ! docker ps --format "{{.Names}}" | grep -q "^${service}$"; then
+            log_warning "Service not running: $service"
+            services_running=false
+        fi
+    done
+
+    if [ "$services_running" = false ]; then
+        log_warning "Required services not running"
+        log_info "Start services with: docker-compose up -d"
+        return 1
+    fi
+
+    log_success "OAuth automation prerequisites satisfied"
+    return 0
+}
+
+# Function to check if OAuth tokens are needed
+check_oauth_status() {
+    log_info "Checking current OAuth authentication status..."
+
+    local needs_oauth=false
+
+    # Check calendar service
+    if command -v curl >/dev/null 2>&1; then
+        local calendar_status=$(curl -s http://localhost:9083/health 2>/dev/null | jq -r '.status' 2>/dev/null || echo "unknown")
+        if [ "$calendar_status" = "warning" ] || [ "$calendar_status" = "unknown" ]; then
+            log_info "Calendar service needs OAuth: status=$calendar_status"
+            needs_oauth=true
+        fi
+
+        # Check Google Drive service
+        local drive_auth_status=$(curl -s http://localhost:9085/health 2>/dev/null | jq -r '.auth_status' 2>/dev/null || echo "unknown")
+        if [ "$drive_auth_status" = "unauthenticated" ] || [ "$drive_auth_status" = "unknown" ]; then
+            log_info "Google Drive service needs OAuth: auth_status=$drive_auth_status"
+            needs_oauth=true
+        fi
+    else
+        log_warning "curl not available - cannot check service OAuth status"
+        log_info "Assuming OAuth setup is needed"
+        needs_oauth=true
+    fi
+
+    if [ "$needs_oauth" = true ]; then
+        log_warning "OAuth re-authorization required for full functionality"
+        return 1
+    else
+        log_success "OAuth authentication appears to be working"
+        return 0
+    fi
+}
+
+# Function to perform automatic OAuth setup
+perform_automatic_oauth_setup() {
+    log_info "🔐 Starting automatic OAuth setup..."
+
+    if [ "$INTERACTIVE_MODE" = true ]; then
+        echo
+        log_info "OAuth re-authorization will open a browser window for Google authentication"
+        log_info "This process requires:"
+        log_info "  • Active internet connection"
+        log_info "  • Web browser access"
+        log_info "  • Google account with appropriate permissions"
+        echo
+
+        read -p "Proceed with OAuth setup? (Y/n): " proceed_oauth
+        if [[ "$proceed_oauth" =~ ^[Nn]$ ]]; then
+            log_info "OAuth setup skipped by user choice"
+            log_info "Manual setup available: python3 authenticate_all_services.py"
+            return 1
+        fi
+    fi
+
+    log_info "Executing OAuth authentication script..."
+
+    # Run the authentication script
+    if python3 authenticate_all_services.py; then
+        log_success "✅ OAuth authentication completed successfully!"
+
+        # Wait for services to pick up new tokens
+        log_info "Waiting for services to recognize new tokens..."
+        sleep 10
+
+        # Verify OAuth status
+        if check_oauth_status; then
+            log_success "✅ OAuth verification passed - services authenticated"
+            return 0
+        else
+            log_warning "OAuth setup completed but verification failed"
+            log_info "Services may need additional time to recognize tokens"
+            return 2
+        fi
+    else
+        log_error "❌ OAuth authentication failed"
+        log_info "Manual setup may be required:"
+        log_info "  python3 authenticate_all_services.py"
+        return 1
+    fi
+}
+
+# Function to handle OAuth automation workflow
+handle_oauth_automation() {
+    # Skip if OAuth automation is disabled
+    if [ "$AUTO_OAUTH" = false ]; then
+        log_info "OAuth automation disabled (--no-oauth or --headless)"
+        log_info "Manual OAuth setup: python3 authenticate_all_services.py"
+        return 0
+    fi
+
+    log_info "🔐 OAuth Automation Workflow Starting..."
+
+    # Check if OAuth is needed
+    if check_oauth_status; then
+        log_success "OAuth authentication already working - no setup needed"
+        return 0
+    fi
+
+    # Check prerequisites
+    if ! check_oauth_prerequisites; then
+        log_warning "OAuth automation prerequisites not met"
+        log_info "Manual setup required after addressing prerequisites"
+        return 1
+    fi
+
+    # Perform automatic OAuth setup
+    perform_automatic_oauth_setup
+    local oauth_result=$?
+
+    case $oauth_result in
+        0)
+            log_success "🎉 OAuth automation completed successfully!"
+            ;;
+        1)
+            log_warning "OAuth automation failed or was skipped"
+            log_info "Manual setup: python3 authenticate_all_services.py"
+            ;;
+        2)
+            log_warning "OAuth setup completed but verification inconclusive"
+            log_info "Check service logs if issues persist"
+            ;;
+    esac
+
+    return $oauth_result
+}
+
 # Function to restart calendar service after token restoration
 restart_calendar_service() {
     log_info "Checking if calendar service needs restart after token restoration..."
@@ -620,6 +806,10 @@ log_success "Credential restoration completed!"
 echo
 restart_calendar_service
 
+# Handle OAuth automation if enabled
+echo
+handle_oauth_automation
+
 # Validate if requested
 if [ "$VALIDATE_MODE" = true ]; then
     echo
@@ -630,7 +820,12 @@ echo
 log_info "Next steps:"
 echo "1. Start FOGIS services: ./manage_fogis_system.sh start"
 echo "2. Check service status: ./manage_fogis_system.sh status"
-echo "3. Test functionality: ./manage_fogis_system.sh test"
+if [ "$AUTO_OAUTH" = false ]; then
+    echo "3. Setup OAuth authentication: python3 authenticate_all_services.py"
+    echo "4. Test functionality: ./manage_fogis_system.sh test"
+else
+    echo "3. Test functionality: ./manage_fogis_system.sh test"
+fi
 
 # Enhanced calendar service authentication implementation complete
 # Features: multi-location token placement, automatic service restart, comprehensive logging
