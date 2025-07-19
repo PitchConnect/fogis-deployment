@@ -121,8 +121,34 @@ def authenticate_services():
         with open("token.json", "w") as f:
             f.write(token_data)
 
-        # Copy to calendar/contacts service
+        # Copy to calendar/contacts service - use correct path from environment variable
         print("📅 Updating calendar/contacts service...")
+
+        # First, create the credentials directory structure in the container
+        subprocess.run(
+            [
+                "docker",
+                "exec",
+                "fogis-calendar-phonebook-sync",
+                "mkdir",
+                "-p",
+                "/app/credentials/tokens/calendar",
+            ],
+            check=True,
+        )
+
+        # Copy to the correct location as defined by GOOGLE_CALENDAR_TOKEN_FILE
+        subprocess.run(
+            [
+                "docker",
+                "cp",
+                "token.json",
+                "fogis-calendar-phonebook-sync:/app/credentials/tokens/calendar/token.json",
+            ],
+            check=True,
+        )
+
+        # Also copy to legacy location for backward compatibility
         subprocess.run(
             [
                 "docker",
