@@ -177,7 +177,7 @@ curl -s http://localhost:9085/health | jq .
 # Solution 1: Run OAuth setup wizard
 ./setup_google_oauth.sh
 
-# Solution 2: Restore from backup
+# Solution 2: Restore from backup with OAuth automation
 ./restore_fogis_credentials.sh --auto --validate
 
 # Solution 3: Manual authorization
@@ -192,7 +192,7 @@ ls -la credentials/google-credentials.json
 # If missing, run setup
 ./setup_google_oauth.sh
 
-# Or restore from backup
+# Or restore from backup with OAuth automation
 ./restore_fogis_credentials.sh --auto
 ```
 
@@ -239,6 +239,12 @@ curl -s http://localhost:9085/health | jq '.auth_status'
 # Validate credentials file
 ./restore_fogis_credentials.sh --validate
 
+# Test OAuth automation workflow
+./restore_fogis_credentials.sh backup-dir --auto
+
+# Skip OAuth automation for manual setup
+./restore_fogis_credentials.sh backup-dir --auto --no-oauth
+
 # Check service logs for OAuth errors
 docker logs google-drive-service --tail 20
 
@@ -247,6 +253,22 @@ curl -s http://localhost:9085/health
 
 # Restart OAuth services
 docker restart google-drive-service fogis-calendar-phonebook-sync
+```
+
+#### **OAuth Automation Troubleshooting:**
+```bash
+# Check OAuth automation prerequisites
+./restore_fogis_credentials.sh --help  # See all options
+
+# Test in headless mode (no prompts)
+./restore_fogis_credentials.sh backup-dir --headless
+
+# Manual OAuth setup after failed automation
+python3 authenticate_all_services.py
+
+# Verify OAuth status after setup
+curl -s http://localhost:9083/health | jq '.status'
+curl -s http://localhost:9085/health | jq '.auth_status'
 ```
 
 #### **OAuth Service Health Indicators:**
@@ -264,17 +286,30 @@ docker restart google-drive-service fogis-calendar-phonebook-sync
 # Backup location: fogis-credentials-backup-YYYYMMDD-HHMMSS/
 ```
 
-#### **Restore Credentials:**
+#### **Restore Credentials with OAuth Automation:**
 ```bash
-# Auto-detect and restore latest backup
+# Auto-detect and restore latest backup with OAuth automation (default)
 ./restore_fogis_credentials.sh --auto --validate
 
-# Restore specific backup
+# Restore specific backup with OAuth automation
 ./restore_fogis_credentials.sh backup-directory --auto
 
-# Interactive restoration
+# Skip OAuth automation (manual setup required)
+./restore_fogis_credentials.sh backup-directory --auto --no-oauth
+
+# Headless restoration (no interactive prompts)
+./restore_fogis_credentials.sh backup-directory --headless
+
+# Interactive restoration with OAuth automation
 ./restore_fogis_credentials.sh --validate
 ```
+
+**OAuth Automation Features:**
+- ✅ **Automatic Detection**: Checks service health endpoints to determine OAuth needs
+- ✅ **User Consent**: Interactive prompts with clear opt-out mechanisms
+- ✅ **Prerequisite Validation**: Verifies Google credentials and dependencies
+- ✅ **Graceful Fallback**: Provides manual setup instructions when automation fails
+- ✅ **Production Ready**: Supports headless deployments with `--headless --no-oauth`
 
 #### **Credential Validation:**
 ```bash
@@ -309,6 +344,9 @@ grep "FOGIS_USERNAME" .env
 - **[Match Processor Service Behavior](MATCH_PROCESSOR_SERVICE_BEHAVIOR.md)** - Understanding the match processor's intended restart behavior and monitoring
 
 ### **Quick Reference**
+- **OAuth Automation**: `./restore_fogis_credentials.sh backup-dir --auto` (includes automatic OAuth setup)
+- **Headless Restoration**: `./restore_fogis_credentials.sh backup-dir --headless --no-oauth`
+- **Manual OAuth Setup**: `python3 authenticate_all_services.py`
 - **Calendar Service Token Fix**: `docker exec fogis-calendar-phonebook-sync cp /app/data/token.json /app/token.json`
 - **Enhanced Credential Restoration**: `./restore_fogis_credentials.sh backup-dir --auto --validate`
 - **Match Processor Monitoring**: Service restarts are normal behavior - check logs for processing activity
