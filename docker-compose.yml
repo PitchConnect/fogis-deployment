@@ -80,6 +80,7 @@ services:
     #   context: local-patches/match-list-processor
     #   dockerfile: Dockerfile.patched
     container_name: match-list-processor
+    command: ["python", "-m", "src.app_persistent"]  # Use persistent service mode to prevent restart loop
     environment:
       - FOGIS_API_CLIENT_URL=http://fogis-api-client-service:8080
       - CALENDAR_SYNC_URL=http://fogis-calendar-phonebook-sync:5003/sync
@@ -87,8 +88,8 @@ services:
       - GOOGLE_DRIVE_URL=http://google-drive-service:5000
       - LOG_LEVEL=INFO
       - FORCE_FRESH_PROCESSING=false  # Disable for event-driven processing
-      - RUN_MODE=service              # Run as persistent service waiting for webhooks
-      - SERVICE_INTERVAL=3600         # Fallback interval (1 hour) for health checks only
+      - RUN_MODE=service              # Run as persistent service with periodic processing
+      - SERVICE_INTERVAL=3600         # Processing interval (1 hour) between match checks
     volumes:
       - ./data/match-list-processor:/app/data
       - ./logs/match-list-processor:/app/logs
