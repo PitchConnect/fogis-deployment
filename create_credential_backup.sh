@@ -52,14 +52,28 @@ fi
 echo "2. Backing up OAuth token files..."
 TOKENS_BACKED_UP=0
 
-# Backup calendar sync token
-if [ -f "$SOURCE_DIR/data/fogis-calendar-phonebook-sync/token.json" ]; then
-    mkdir -p "$BACKUP_DIR/tokens/calendar"
-    cp "$SOURCE_DIR/data/fogis-calendar-phonebook-sync/token.json" "$BACKUP_DIR/tokens/calendar/"
-    echo "   ✓ Calendar sync token backed up"
+# Backup calendar sync token - check multiple locations
+calendar_token_found=false
+mkdir -p "$BACKUP_DIR/tokens/calendar"
+
+# Check credentials directory first (preferred location)
+if [ -f "$SOURCE_DIR/credentials/tokens/calendar/token.json" ]; then
+    cp "$SOURCE_DIR/credentials/tokens/calendar/token.json" "$BACKUP_DIR/tokens/calendar/"
+    echo "   ✓ Calendar sync token backed up from credentials directory"
     TOKENS_BACKED_UP=$((TOKENS_BACKED_UP + 1))
-else
-    echo "   ⚠ No calendar sync token found"
+    calendar_token_found=true
+# Check legacy data directory
+elif [ -f "$SOURCE_DIR/data/fogis-calendar-phonebook-sync/token.json" ]; then
+    cp "$SOURCE_DIR/data/fogis-calendar-phonebook-sync/token.json" "$BACKUP_DIR/tokens/calendar/"
+    echo "   ✓ Calendar sync token backed up from data directory"
+    TOKENS_BACKED_UP=$((TOKENS_BACKED_UP + 1))
+    calendar_token_found=true
+fi
+
+if [ "$calendar_token_found" = false ]; then
+    echo "   ⚠ No calendar sync token found in any location"
+    echo "     Checked: credentials/tokens/calendar/token.json"
+    echo "     Checked: data/fogis-calendar-phonebook-sync/token.json"
 fi
 
 # Backup Google Drive tokens (these can be used by calendar service if needed)
