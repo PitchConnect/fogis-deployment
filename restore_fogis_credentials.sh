@@ -579,3 +579,4 @@ log_info "Next steps:"
 echo "1. Start FOGIS services: ./manage_fogis_system.sh start"
 echo "2. Check service status: ./manage_fogis_system.sh status"
 echo "3. Test functionality: ./manage_fogis_system.sh test"
+# Enhanced calendar service authentication - Sat Jul 19 09:58:54 CEST 2025
