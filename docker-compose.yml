@@ -61,7 +61,10 @@ services:
       - fogis-network
     restart: unless-stopped
     depends_on:
-      - fogis-api-client-service
+      fogis-api-client-service:
+        condition: service_healthy
+      match-list-processor:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
       interval: 30s
@@ -105,9 +108,14 @@ services:
       retries: 3
       start_period: 40s
     depends_on:
-      - fogis-api-client-service
-      - fogis-calendar-phonebook-sync
-      - team-logo-combiner
+      fogis-api-client-service:
+        condition: service_healthy
+      fogis-calendar-phonebook-sync:
+        condition: service_healthy
+      team-logo-combiner:
+        condition: service_healthy
+      google-drive-service:
+        condition: service_healthy
 
   # Calendar and phonebook synchronization service
   fogis-calendar-phonebook-sync:

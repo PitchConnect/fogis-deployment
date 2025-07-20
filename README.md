@@ -28,6 +28,45 @@ This repository contains a **complete automated deployment solution** for the FO
 
 **That's it! Your FOGIS system is now fully automated.** 🎉
 
+## **🔐 OAuth Authentication During Startup**
+
+### **Expected Behavior - No Action Required**
+
+When starting FOGIS services, you may see OAuth-related messages during the first 30-60 seconds. **This is normal and expected behavior.**
+
+#### **What You'll See:**
+- 🔐 **Initial OAuth messages**: Services may log "OAuth authentication in progress..." or similar messages
+- ⚠️ **Temporary warnings**: Brief OAuth errors during service initialization (first 30-60 seconds)
+- ✅ **Self-healing**: Services automatically restore OAuth authentication using refresh tokens
+- 🎯 **Final success**: All services report "authenticated" status within 60 seconds
+
+#### **Timing Expectations:**
+- **OAuth initialization**: 15-30 seconds after service startup
+- **Token refresh**: Automatic when tokens are expired
+- **Full authentication**: Typically completes within 60 seconds
+- **No manual intervention required**: Services self-heal OAuth authentication
+
+#### **Health Check Integration:**
+```bash
+# Check OAuth status for all services
+./manage_fogis_system.sh health
+
+# Individual service OAuth status
+curl http://localhost:9085/health  # Google Drive service
+curl http://localhost:9083/health  # Calendar service
+```
+
+#### **Normal Startup Log Examples:**
+```
+🔐 OAuth authentication in progress...
+⚠️ Failed to obtain Google Calendar Credentials (temporary)
+🔄 Refreshing expired Google token...
+✅ OAuth authentication established
+✅ Successfully authenticated in headless mode
+```
+
+**💡 Key Point**: If you see OAuth errors in the first minute after startup, wait 60 seconds before troubleshooting. Most issues resolve automatically.
+
 ## **📋 What This System Does**
 
 - 🔄 **Automatically fetches** your FOGIS match assignments every hour
