@@ -276,6 +276,12 @@ curl -s http://localhost:9085/health | jq '.auth_status'
 - ❌ **Needs Setup**: `"auth_status": "unauthenticated"`
 - ⚠️ **Check Logs**: Service not responding
 
+**Enhanced Health Check Features (Latest Update):**
+- **Calendar Service**: Now properly detects OAuth tokens using environment variables
+- **Multi-Location Detection**: Checks preferred, legacy, and working directory token locations
+- **Detailed Status**: Includes `token_location` and `checked_locations` in responses
+- **Accurate Monitoring**: Eliminates false negative health checks
+
 ### **🔧 Credential Management**
 
 #### **Backup Credentials:**
