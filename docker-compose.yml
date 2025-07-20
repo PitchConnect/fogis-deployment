@@ -124,6 +124,8 @@ services:
       - USER_REFEREE_NUMBER=${USER_REFEREE_NUMBER:-12345}
       - GOOGLE_CREDENTIALS_PATH=/app/credentials/google-credentials.json
       - LOG_LEVEL=INFO
+      - FLASK_HOST=0.0.0.0  # Bind to all interfaces for inter-container communication
+      - FLASK_PORT=5003     # Explicit port configuration matching app default
     volumes:
       - ./data/fogis-calendar-phonebook-sync:/app/data
       - ./logs/fogis-calendar-phonebook-sync:/app/logs
