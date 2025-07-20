@@ -199,7 +199,94 @@ services:
       retries: 3
       start_period: 40s
 
+  # Centralized Logging Infrastructure
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: fogis-loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/loki:/loki
+      - ./monitoring/loki-config.yaml:/etc/loki/local-config.yaml
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - fogis-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3100/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
+  promtail:
+    image: grafana/promtail:2.9.0
+    container_name: fogis-promtail
+    volumes:
+      - ./logs:/var/log/fogis:ro
+      - ./monitoring/promtail-config.yaml:/etc/promtail/config.yml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - fogis-network
+    restart: unless-stopped
+    depends_on:
+      loki:
+        condition: service_healthy
+
+  grafana:
+    image: grafana/grafana:10.0.0
+    container_name: fogis-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    networks:
+      - fogis-network
+    restart: unless-stopped
+    depends_on:
+      loki:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  fogis-event-collector:
+    image: ghcr.io/pitchconnect/fogis-event-collector:latest
+    container_name: fogis-event-collector
+    ports:
+      - "9090:8080"
+    environment:
+      - LOKI_URL=http://loki:3100
+      - WEBHOOK_ENDPOINTS=${EXTERNAL_WEBHOOK_ENDPOINTS:-}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
+      - TEAMS_WEBHOOK_URL=${TEAMS_WEBHOOK_URL:-}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - ./monitoring/event-collector-config.yaml:/app/config.yaml
+      - ./logs/event-collector:/app/logs
+    networks:
+      - fogis-network
+    restart: unless-stopped
+    depends_on:
+      loki:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 networks:
   fogis-network:
@@ -211,3 +298,4 @@ volumes:
   calendar-data:
   logo-data:
   drive-data:
+  grafana-storage:
