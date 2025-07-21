@@ -1,0 +1,209 @@
+# FOGIS Event Collector Configuration
+
+server:
+  port: 8080
+  host: "0.0.0.0"
+  read_timeout: 30s
+  write_timeout: 30s
+
+logging:
+  level: info
+  format: json
+  output: stdout
+
+# Event processing configuration
+events:
+  buffer_size: 1000
+  batch_size: 50
+  flush_interval: 5s
+  max_retry_attempts: 3
+  retry_backoff: 2s
+
+# External broadcasting configuration
+broadcasting:
+  enabled: true
+  
+  # Webhook endpoints for external systems
+  webhooks:
+    - name: "external_monitoring"
+      url: "${EXTERNAL_WEBHOOK_URL}"
+      events: ["match_update", "service_alert", "system_status"]
+      headers:
+        Content-Type: "application/json"
+        Authorization: "Bearer ${EXTERNAL_API_TOKEN}"
+      retry_policy:
+        max_retries: 3
+        backoff_multiplier: 2
+        initial_delay_ms: 1000
+        max_delay_ms: 30000
+      timeout: 10s
+      
+    - name: "backup_webhook"
+      url: "${BACKUP_WEBHOOK_URL}"
+      events: ["service_alert"]
+      severity_filter: ["error", "critical"]
+      retry_policy:
+        max_retries: 5
+        backoff_multiplier: 1.5
+        initial_delay_ms: 500
+      timeout: 5s
+
+# Notification services
+notifications:
+  slack:
+    enabled: true
+    webhook_url: "${SLACK_WEBHOOK_URL}"
+    channels:
+      - name: "#fogis-alerts"
+        events: ["service_alert"]
+        severity: ["warning", "error", "critical"]
+        template: |
+          {
+            "text": "🚨 FOGIS Alert: {{.data.service}} - {{.data.alert_type}}",
+            "attachments": [
+              {
+                "color": "{{if eq .severity \"critical\"}}danger{{else if eq .severity \"error\"}}warning{{else}}good{{end}}",
+                "fields": [
+                  {
+                    "title": "Service",
+                    "value": "{{.data.service}}",
+                    "short": true
+                  },
+                  {
+                    "title": "Alert Type",
+                    "value": "{{.data.alert_type}}",
+                    "short": true
+                  },
+                  {
+                    "title": "Description",
+                    "value": "{{.data.description}}",
+                    "short": false
+                  },
+                  {
+                    "title": "Timestamp",
+                    "value": "{{.timestamp}}",
+                    "short": true
+                  }
+                ]
+              }
+            ]
+          }
+      
+      - name: "#fogis-updates"
+        events: ["match_update", "system_status"]
+        severity: ["info"]
+        template: |
+          {
+            "text": "ℹ️ FOGIS Update: {{.event_type}}",
+            "attachments": [
+              {
+                "color": "good",
+                "fields": [
+                  {
+                    "title": "Event",
+                    "value": "{{.event_type}}",
+                    "short": true
+                  },
+                  {
+                    "title": "Details",
+                    "value": "{{if .data.match_count}}{{.data.match_count}} matches processed{{else}}{{.data.status}}{{end}}",
+                    "short": true
+                  }
+                ]
+              }
+            ]
+          }
+
+  discord:
+    enabled: true
+    webhook_url: "${DISCORD_WEBHOOK_URL}"
+    events: ["service_alert"]
+    severity: ["error", "critical"]
+    template: |
+      {
+        "embeds": [
+          {
+            "title": "🚨 FOGIS Critical Alert",
+            "description": "{{.data.description}}",
+            "color": 15158332,
+            "fields": [
+              {
+                "name": "Service",
+                "value": "{{.data.service}}",
+                "inline": true
+              },
+              {
+                "name": "Alert Type",
+                "value": "{{.data.alert_type}}",
+                "inline": true
+              },
+              {
+                "name": "Severity",
+                "value": "{{.severity}}",
+                "inline": true
+              }
+            ],
+            "timestamp": "{{.timestamp}}"
+          }
+        ]
+      }
+
+  email:
+    enabled: false
+    smtp_server: "${SMTP_SERVER}"
+    smtp_port: 587
+    username: "${SMTP_USERNAME}"
+    password: "${SMTP_PASSWORD}"
+    from: "fogis-alerts@example.com"
+    recipients: ["admin@example.com"]
+    events: ["service_alert"]
+    severity: ["critical"]
+
+# Circuit breaker configuration
+circuit_breaker:
+  enabled: true
+  failure_threshold: 5
+  recovery_timeout: 30s
+  half_open_max_calls: 3
+
+# Rate limiting configuration
+rate_limiting:
+  enabled: true
+  events_per_minute: 100
+  burst_capacity: 200
+  per_event_type:
+    match_update: 20
+    service_alert: 50
+    system_status: 10
+
+# Health check and monitoring
+monitoring:
+  prometheus_metrics: true
+  health_check_endpoint: "/health"
+  metrics_endpoint: "/metrics"
+  
+# Event filtering and routing
+filters:
+  # Ignore debug events in production
+  - name: "ignore_debug"
+    condition: "severity == 'debug'"
+    action: "drop"
+  
+  # Route critical alerts to multiple channels
+  - name: "critical_alerts"
+    condition: "severity == 'critical'"
+    action: "duplicate"
+    targets: ["slack", "discord", "webhook"]
+  
+  # Aggregate similar events
+  - name: "aggregate_oauth_events"
+    condition: "event_type == 'service_alert' && data.alert_type == 'oauth_failure'"
+    action: "aggregate"
+    window: "5m"
+    threshold: 3
+
+# Storage for event history
+storage:
+  type: "memory"  # Options: memory, redis, postgres
+  retention: "24h"
+  max_events: 10000

@@ -1,0 +1,136 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # FOGIS Service Logs from Docker containers
+  - job_name: fogis-services
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: label
+            values: ["com.docker.compose.project=fogis-deployment-test"]
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        regex: '(fogis-.*|match-list-.*|team-logo-.*|google-drive-.*|loki|grafana|promtail|fogis-event-collector)'
+        target_label: __tmp_docker_service
+      - source_labels: ['__tmp_docker_service']
+        regex: '(.+)'
+        target_label: service_name
+      - source_labels: ['__meta_docker_container_name']
+        target_label: container_name
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: stream
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_project']
+        target_label: project
+    pipeline_stages:
+      # Parse timestamp and log level
+      - regex:
+          expression: '(?P<timestamp>\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}[.,]\d{3})\s*[-\s]*\s*(?P<level>DEBUG|INFO|WARN|WARNING|ERROR|CRITICAL|FATAL)?\s*[-\s]*\s*(?P<message>.*)'
+      - labels:
+          level:
+      - timestamp:
+          source: timestamp
+          format: '2006-01-02 15:04:05,000'
+          fallback_formats:
+            - '2006-01-02T15:04:05.000Z'
+            - '2006-01-02T15:04:05.000'
+      
+      # OAuth Authentication Events
+      - match:
+          selector: '{service_name=~"fogis-calendar-.*|google-drive-.*"}'
+          stages:
+            - regex:
+                expression: '.*(?P<oauth_indicator>OAuth|authentication|token|credential).*'
+            - labels:
+                oauth_event: "true"
+            - match:
+                selector: '{message=~".*🔐.*|.*✅.*OAuth.*|.*❌.*OAuth.*|.*🔄.*token.*"}'
+                stages:
+                  - labels:
+                      oauth_status_event: "true"
+      
+      # Service Health Events
+      - match:
+          selector: '{service_name=~".*"}'
+          stages:
+            - regex:
+                expression: '.*(?P<health_status>healthy|unhealthy|starting|stopping|degraded).*'
+            - labels:
+                health_status:
+      
+      # Match Processing Events
+      - match:
+          selector: '{service_name=~"match-list-.*"}'
+          stages:
+            - regex:
+                expression: '.*(?P<match_event>new matches|changes detected|processing complete|match.*uploaded|calendar.*sync).*'
+            - labels:
+                match_event: "true"
+            - regex:
+                expression: '.*(?P<match_count>\d+)\s*(matches?|changes?).*'
+            - labels:
+                match_count:
+      
+      # Error and Exception Tracking
+      - match:
+          selector: '{level=~"ERROR|CRITICAL|FATAL"}'
+          stages:
+            - regex:
+                expression: '.*(?P<error_type>Exception|Error|Traceback|Failed).*'
+            - labels:
+                error_event: "true"
+                error_type:
+      
+      # Performance Metrics
+      - match:
+          selector: '{service_name=~".*"}'
+          stages:
+            - regex:
+                expression: '.*(?P<duration>\d+(?:\.\d+)?)\s*(?P<duration_unit>ms|seconds?|minutes?).*'
+            - labels:
+                has_duration: "true"
+                duration_unit:
+
+  # Static log files
+  - job_name: fogis-static-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: fogis-static-logs
+          __path__: /var/log/fogis/*.log
+    pipeline_stages:
+      - regex:
+          expression: '(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) (?P<level>\w+) (?P<service>\w+): (?P<message>.*)'
+      - labels:
+          level:
+          service:
+      - timestamp:
+          source: timestamp
+          format: '2006-01-02 15:04:05'
+
+  # System logs (if available)
+  - job_name: system-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: system-logs
+          __path__: /var/log/syslog
+    pipeline_stages:
+      - regex:
+          expression: '(?P<timestamp>\w{3}\s+\d{1,2} \d{2}:\d{2}:\d{2}) (?P<hostname>\S+) (?P<service>\S+): (?P<message>.*)'
+      - labels:
+          hostname:
+          service:
+      - timestamp:
+          source: timestamp
+          format: 'Jan 02 15:04:05'
