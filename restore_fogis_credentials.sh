@@ -290,6 +290,7 @@ restore_google_drive_tokens() {
     # Define possible token locations in backup (in order of preference)
     local token_locations=(
         "$BACKUP_DIR/tokens/drive/google-drive-token.json"
+        "$BACKUP_DIR/tokens/calendar/google-drive-token.json"  # Added: check calendar dir for drive token
         "$BACKUP_DIR/tokens/drive/token.json"
         "$BACKUP_DIR/data/google-drive-service/google-drive-token.json"
         "$BACKUP_DIR/data/google-drive-service/token.json"
@@ -303,6 +304,7 @@ restore_google_drive_tokens() {
             # Copy to the service expected location
             cp "$token_path" "$TARGET_DIR/data/google-drive-service/google-drive-token.json"
             log_success "Google Drive token restored from: $(basename "$(dirname "$token_path")")/$(basename "$token_path")"
+            log_info "Token placed at: $TARGET_DIR/data/google-drive-service/google-drive-token.json"
 
             # Validate token structure
             if validate_oauth_token "$TARGET_DIR/data/google-drive-service/google-drive-token.json"; then
@@ -320,6 +322,8 @@ restore_google_drive_tokens() {
         log_warning "No valid Google Drive tokens found in backup"
         log_info "Service will require OAuth re-authorization"
         log_info "Visit http://localhost:9085/authorize_gdrive after starting services"
+    else
+        log_success "Google Drive token successfully restored and validated"
     fi
 }
 
@@ -337,8 +341,9 @@ restore_calendar_service_tokens() {
     # Define possible token locations in backup (in order of preference)
     local token_locations=(
         "$BACKUP_DIR/tokens/calendar/token.json"
-        "$BACKUP_DIR/tokens/drive/google-drive-token.json"
+        "$BACKUP_DIR/tokens/calendar/google-drive-token.json"  # Sometimes calendar tokens are named as drive tokens
         "$BACKUP_DIR/tokens/drive/token.json"
+        "$BACKUP_DIR/tokens/drive/google-drive-token.json"
         "$BACKUP_DIR/data/fogis-calendar-phonebook-sync/token.json"
         "$BACKUP_DIR/data/google-drive-service/google-drive-token.json"
     )
@@ -352,16 +357,16 @@ restore_calendar_service_tokens() {
             # 1. Data directory (legacy location)
             cp "$token_path" "$TARGET_DIR/data/fogis-calendar-phonebook-sync/token.json"
 
-            # 2. Credentials directory (environment variable location)
+            # 2. Credentials directory (environment variable location - primary)
             cp "$token_path" "$TARGET_DIR/credentials/tokens/calendar/token.json"
 
             log_success "Calendar service token restored from: $(basename "$(dirname "$token_path")")/$(basename "$token_path")"
             log_info "Token placed in multiple locations for compatibility:"
-            log_info "  - $TARGET_DIR/data/fogis-calendar-phonebook-sync/token.json"
-            log_info "  - $TARGET_DIR/credentials/tokens/calendar/token.json"
+            log_info "  - $TARGET_DIR/credentials/tokens/calendar/token.json (primary)"
+            log_info "  - $TARGET_DIR/data/fogis-calendar-phonebook-sync/token.json (legacy)"
 
-            # Validate token structure
-            if validate_oauth_token "$TARGET_DIR/data/fogis-calendar-phonebook-sync/token.json"; then
+            # Validate token structure using the primary location
+            if validate_oauth_token "$TARGET_DIR/credentials/tokens/calendar/token.json"; then
                 log_success "Calendar service token validation passed"
                 calendar_token_restored=true
                 break
@@ -505,20 +510,63 @@ validate_restoration() {
         warnings=$((warnings + 1))
     fi
 
+    # Enhanced OAuth token validation
+    log_info "Validating OAuth token placement and integrity..."
+
     # Check Google Drive tokens
     if [ -f "$TARGET_DIR/data/google-drive-service/google-drive-token.json" ]; then
-        log_success "Google Drive tokens restored"
+        if validate_oauth_token "$TARGET_DIR/data/google-drive-service/google-drive-token.json"; then
+            log_success "Google Drive token restored and validated"
+        else
+            log_warning "Google Drive token found but validation failed"
+            warnings=$((warnings + 1))
+        fi
     else
-        log_warning "Google Drive tokens missing - OAuth re-authorization required"
+        log_warning "Google Drive token missing - OAuth re-authorization required"
         warnings=$((warnings + 1))
     fi
 
-    # Summary
+    # Check calendar tokens (both locations)
+    local calendar_token_found=false
+    local calendar_primary_location="$TARGET_DIR/credentials/tokens/calendar/token.json"
+    local calendar_legacy_location="$TARGET_DIR/data/fogis-calendar-phonebook-sync/token.json"
+
+    if [ -f "$calendar_primary_location" ]; then
+        if validate_oauth_token "$calendar_primary_location"; then
+            log_success "Calendar token restored and validated (primary location)"
+            calendar_token_found=true
+        else
+            log_warning "Calendar token found but validation failed (primary location)"
+            warnings=$((warnings + 1))
+        fi
+    fi
+
+    if [ -f "$calendar_legacy_location" ]; then
+        if validate_oauth_token "$calendar_legacy_location"; then
+            log_success "Calendar token restored and validated (legacy location)"
+            calendar_token_found=true
+        else
+            log_warning "Calendar token found but validation failed (legacy location)"
+            warnings=$((warnings + 1))
+        fi
+    fi
+
+    if [ "$calendar_token_found" = false ]; then
+        log_warning "Calendar tokens missing - OAuth re-authorization required"
+        warnings=$((warnings + 1))
+    fi
+
+    # Enhanced validation summary
+    log_info "=== VALIDATION SUMMARY ==="
     if [ "$validation_passed" = true ]; then
         if [ $warnings -eq 0 ]; then
-            log_success "Credential validation passed - no issues detected"
+            log_success "✅ All credentials validated successfully!"
+            log_success "✅ OAuth tokens properly placed and validated"
+            log_success "✅ System ready for immediate operational resumption"
         else
-            log_warning "Credential validation passed with $warnings warning(s) - review above"
+            log_warning "⚠️  Credential validation passed with $warnings warning(s)"
+            log_info "System functional but may require OAuth re-authorization"
+            log_info "Review warnings above for details"
         fi
 
         # Perform post-restoration service setup
@@ -526,7 +574,8 @@ validate_restoration() {
 
         return 0
     else
-        log_error "Credential validation failed - manual intervention required"
+        log_error "❌ Credential validation failed - manual intervention required"
+        log_error "Critical issues must be resolved before system operation"
         return 1
     fi
 }
