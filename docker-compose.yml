@@ -9,7 +9,7 @@ x-env-file: &env-file
 services:
   # FOGIS API Client Service - centralized API access
   fogis-api-client-service:
-    image: ghcr.io/pitchconnect/fogis-api-client:latest
+    image: ghcr.io/pitchconnect/fogis-api-client-python:latest
     container_name: fogis-api-client-service
     <<: *env-file
     environment:
@@ -34,7 +34,7 @@ services:
 
   # Core orchestration service - runs as persistent service with internal scheduling
   match-list-change-detector:
-    # image: ghcr.io/pitchconnect/match-list-change-detector:latest
+    image: ghcr.io/pitchconnect/match-list-change-detector:latest
     build:
       context: local-patches/match-list-change-detector
       dockerfile: Dockerfile.patched
@@ -260,33 +260,33 @@ services:
       retries: 3
       start_period: 40s
 
-  fogis-event-collector:
-    image: ghcr.io/pitchconnect/fogis-event-collector:latest
-    container_name: fogis-event-collector
-    ports:
-      - "9090:8080"
-    environment:
-      - LOKI_URL=http://loki:3100
-      - WEBHOOK_ENDPOINTS=${EXTERNAL_WEBHOOK_ENDPOINTS:-}
-      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
-      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
-      - TEAMS_WEBHOOK_URL=${TEAMS_WEBHOOK_URL:-}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-    volumes:
-      - ./monitoring/event-collector-config.yaml:/app/config.yaml
-      - ./logs/event-collector:/app/logs
-    networks:
-      - fogis-network
-    restart: unless-stopped
-    depends_on:
-      loki:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+  # fogis-event-collector:
+  #   image: ghcr.io/pitchconnect/fogis-event-collector:latest
+  #   container_name: fogis-event-collector
+  #   ports:
+  #     - "9090:8080"
+  #   environment:
+  #     - LOKI_URL=http://loki:3100
+  #     - WEBHOOK_ENDPOINTS=${EXTERNAL_WEBHOOK_ENDPOINTS:-}
+  #     - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+  #     - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
+  #     - TEAMS_WEBHOOK_URL=${TEAMS_WEBHOOK_URL:-}
+  #     - LOG_LEVEL=${LOG_LEVEL:-INFO}
+  #   volumes:
+  #     - ./monitoring/event-collector-config.yaml:/app/config.yaml
+  #     - ./logs/event-collector:/app/logs
+  #   networks:
+  #     - fogis-network
+  #   restart: unless-stopped
+  #   depends_on:
+  #     loki:
+  #       condition: service_healthy
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 40s
 
 networks:
   fogis-network:
