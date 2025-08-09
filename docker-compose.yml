@@ -32,51 +32,7 @@ services:
       retries: 3
       start_period: 40s
 
-  # Core orchestration service - runs as persistent service with internal scheduling
-  match-list-change-detector:
-    image: ghcr.io/pitchconnect/match-list-change-detector:latest
-    build:
-      context: local-patches/match-list-change-detector
-      dockerfile: Dockerfile.patched
-    container_name: match-list-change-detector
-    <<: *env-file
-    environment:
-      - FOGIS_USERNAME=${FOGIS_USERNAME}
-      - FOGIS_PASSWORD=${FOGIS_PASSWORD}
-      - FOGIS_API_CLIENT_URL=http://fogis-api-client-service:8080
-      - HEALTH_SERVER_PORT=8080
-      - HEALTH_SERVER_HOST=0.0.0.0
-      - PROMETHEUS_PORT=8081
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - WEBHOOK_URL=${WEBHOOK_URL:-http://match-list-processor:8000/process}
-      - RUN_MODE=service
-      - CRON_SCHEDULE=${MATCH_DETECTOR_CRON_SCHEDULE:-0 * * * *}
-    volumes:
-      - ./data/match-list-change-detector:/app/data
-      - ./logs/match-list-change-detector:/app/logs
-    ports:
-      - "${MATCH_DETECTOR_PORT:-9080}:8080"  # Health check endpoint
-      - "9081:8081"  # Prometheus metrics
-    networks:
-      - fogis-network
-    restart: unless-stopped
-    depends_on:
-      fogis-api-client-service:
-        condition: service_healthy
-      match-list-processor:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    # Cron-like scheduling using restart policy and external cron
-    labels:
-      - "cron.schedule=0 * * * *"  # Every hour
-      - "cron.command=python main.py"
-
-  # Match list processor - event-driven service waiting for webhook triggers
+  # Match list processor - persistent service with internal scheduling
   match-list-processor:
     image: ghcr.io/pitchconnect/match-list-processor:latest
     # build:
@@ -138,6 +94,7 @@ services:
       - ./data/fogis-calendar-phonebook-sync:/app/data
       - ./logs/fogis-calendar-phonebook-sync:/app/logs
       - ./credentials:/app/credentials:ro
+      - ../fogis-calendar-phonebook-sync/token.json:/app/token.json:ro  # Contacts OAuth token
     ports:
       - "9083:5003"  # API endpoint
       - "9084:8080"  # Auth server endpoint

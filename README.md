@@ -140,8 +140,7 @@ python3 test_multiplatform.py
 | **Team Logo Combiner** | Creates WhatsApp group avatars | 9088 | `ghcr.io/pitchconnect/team-logo-combiner` |
 | **Calendar/Phonebook Sync** | Syncs to Google Calendar | 9084 | `ghcr.io/pitchconnect/fogis-calendar-phonebook-sync` |
 | **Google Drive Service** | Uploads files to Google Drive | 9085 | `ghcr.io/pitchconnect/google-drive-service` |
-| **Match Processor** | Main processing engine | (triggered) | `ghcr.io/pitchconnect/match-list-processor` |
-| **Change Detector** | Monitors for new matches | 9080 | `ghcr.io/pitchconnect/match-list-change-detector` |
+| **Match Processor** | Main processing engine with internal scheduling | 9082 | `ghcr.io/pitchconnect/match-list-processor` |
 
 ### **📦 Container Features**
 - **Multi-Architecture**: AMD64 and ARM64 support
@@ -152,8 +151,8 @@ python3 test_multiplatform.py
 ## **⏰ Automation**
 
 Once set up, the system automatically:
-- **Runs every hour** at minute 0 (1:00, 2:00, 3:00, etc.)
-- **Checks for new matches** from FOGIS
+- **Runs every hour** with internal scheduling (3600-second intervals)
+- **Checks for new matches** from FOGIS using integrated change detection
 - **Creates WhatsApp assets** for any new assignments
 - **Uploads to Google Drive** with proper organization
 - **Logs everything** for monitoring
