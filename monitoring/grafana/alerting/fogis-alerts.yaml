@@ -1,0 +1,132 @@
+groups:
+  - name: FOGIS Critical Alerts
+    interval: 1m
+    rules:
+      - alert: ServiceDown
+        expr: |
+          sum(count_over_time({service_name=~"fogis-.*|match-list-.*|team-logo-.*|google-drive-.*"} |~ "healthy" [5m])) by (service_name) == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: "{{ $labels.service_name }}"
+        annotations:
+          summary: "FOGIS service {{ $labels.service_name }} is down"
+          description: "Service {{ $labels.service_name }} has not reported healthy status in the last 5 minutes"
+          runbook_url: "https://github.com/PitchConnect/fogis-deployment/blob/main/docs/TROUBLESHOOTING.md#service-down"
+
+      - alert: OAuthAuthenticationFailure
+        expr: |
+          sum(count_over_time({oauth_event="true"} |~ "401|unauthorized|authentication.*failed" [5m])) > 0
+        for: 1m
+        labels:
+          severity: critical
+          component: oauth
+        annotations:
+          summary: "OAuth authentication failure detected"
+          description: "OAuth authentication failures detected in the last 5 minutes. Services may be unable to access Google APIs."
+          runbook_url: "https://github.com/PitchConnect/fogis-deployment/blob/main/docs/OAUTH_TROUBLESHOOTING.md"
+
+      - alert: FOGISAPIConnectivityIssue
+        expr: |
+          sum(count_over_time({service_name=~".*"} |~ "500 Server Error|INTERNAL SERVER ERROR|Connection refused.*fogis" [5m])) > 2
+        for: 2m
+        labels:
+          severity: critical
+          component: fogis-api
+        annotations:
+          summary: "FOGIS API connectivity issues detected"
+          description: "Multiple FOGIS API errors detected in the last 5 minutes. Match processing may be affected."
+          runbook_url: "https://github.com/PitchConnect/fogis-deployment/blob/main/docs/API_TROUBLESHOOTING.md"
+
+      - alert: MatchProcessingFailure
+        expr: |
+          sum(count_over_time({service_name=~"match-list-.*"} |~ "Could not fetch current matches|processing.*failed" [10m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+          component: match-processing
+        annotations:
+          summary: "Match processing failures detected"
+          description: "Match processing has failed multiple times in the last 10 minutes"
+          runbook_url: "https://github.com/PitchConnect/fogis-deployment/blob/main/docs/MATCH_PROCESSING_TROUBLESHOOTING.md"
+
+  - name: FOGIS Warning Alerts
+    interval: 5m
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate({level="ERROR"} [5m])) /
+            sum(rate({service_name=~"fogis-.*|match-list-.*|team-logo-.*|google-drive-.*"} [5m]))
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: general
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is above 10% for the last 5 minutes"
+          runbook_url: "https://github.com/PitchConnect/fogis-deployment/blob/main/docs/ERROR_ANALYSIS.md"
+
+      - alert: ServiceDegraded
+        expr: |
+          sum(count_over_time({service_name=~"fogis-.*|match-list-.*|team-logo-.*|google-drive-.*"} |~ "degraded" [5m])) by (service_name) > 0
+        for: 3m
+        labels:
+          severity: warning
+          service: "{{ $labels.service_name }}"
+        annotations:
+          summary: "Service {{ $labels.service_name }} is degraded"
+          description: "Service {{ $labels.service_name }} is reporting degraded status"
+          runbook_url: "https://github.com/PitchConnect/fogis-deployment/blob/main/docs/SERVICE_DEGRADATION.md"
+
+      - alert: SlowProcessingCycles
+        expr: |
+          sum(count_over_time({service_name=~"match-list-.*"} |~ "Starting periodic match processing cycle" [2h])) < 1
+        for: 10m
+        labels:
+          severity: warning
+          component: match-processing
+        annotations:
+          summary: "Match processing cycles are slow or missing"
+          description: "No match processing cycles detected in the last 2 hours"
+          runbook_url: "https://github.com/PitchConnect/fogis-deployment/blob/main/docs/PROCESSING_CYCLES.md"
+
+      - alert: GoogleDriveUploadFailures
+        expr: |
+          sum(count_over_time({service_name=~"google-drive-.*"} |~ "Request error uploading|upload.*failed" [15m])) > 3
+        for: 5m
+        labels:
+          severity: warning
+          component: google-drive
+        annotations:
+          summary: "Google Drive upload failures detected"
+          description: "Multiple Google Drive upload failures in the last 15 minutes"
+          runbook_url: "https://github.com/PitchConnect/fogis-deployment/blob/main/docs/GOOGLE_DRIVE_TROUBLESHOOTING.md"
+
+  - name: FOGIS Performance Alerts
+    interval: 10m
+    rules:
+      - alert: UnusualLogVolume
+        expr: |
+          sum(rate({service_name=~"fogis-.*|match-list-.*|team-logo-.*|google-drive-.*"} [5m])) > 100
+        for: 10m
+        labels:
+          severity: info
+          component: performance
+        annotations:
+          summary: "Unusual log volume detected"
+          description: "Log volume is significantly higher than normal"
+          runbook_url: "https://github.com/PitchConnect/fogis-deployment/blob/main/docs/PERFORMANCE_ANALYSIS.md"
+
+      - alert: NoRecentActivity
+        expr: |
+          sum(rate({service_name=~"fogis-.*|match-list-.*|team-logo-.*|google-drive-.*"} [1h])) == 0
+        for: 30m
+        labels:
+          severity: warning
+          component: general
+        annotations:
+          summary: "No recent activity detected"
+          description: "No log activity detected from any FOGIS service in the last hour"
+          runbook_url: "https://github.com/PitchConnect/fogis-deployment/blob/main/docs/ACTIVITY_MONITORING.md"

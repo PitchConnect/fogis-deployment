@@ -16,7 +16,7 @@ scrape_configs:
         refresh_interval: 5s
         filters:
           - name: label
-            values: ["com.docker.compose.project=fogis-deployment-test"]
+            values: ["com.docker.compose.project=fogis-deployment"]
     relabel_configs:
       - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
         regex: '(fogis-.*|match-list-.*|team-logo-.*|google-drive-.*|loki|grafana|promtail|fogis-event-collector)'
