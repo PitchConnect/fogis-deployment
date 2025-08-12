@@ -99,7 +99,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum by (service_name) (count_over_time({service_name=~\"fogis-.*|match-list-.*|team-logo-.*|google-drive-.*\"} |~ \"healthy|unhealthy|degraded\" [5m]))",
+          "expr": "sum by (service_name) (count_over_time({service_name=~\"fogis-.*|match-list-.*|team-logo-combiner|google-drive-service\"} |~ \"healthy|unhealthy|degraded\" [5m]))",
           "queryType": "",
           "refId": "A"
         }
@@ -191,7 +191,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum by (service_name) (rate({service_name=~\"fogis-.*|match-list-.*|team-logo-.*|google-drive-.*\"} [5m]))",
+          "expr": "sum by (service_name) (rate({service_name=~\"fogis-.*|match-list-.*|team-logo-combiner|google-drive-service\"} [5m]))",
           "queryType": "",
           "refId": "A"
         }

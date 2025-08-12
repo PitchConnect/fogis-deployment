@@ -227,7 +227,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({service_name=~\"fogis-api-.*\"} |~ \"Status Code: 200\" [5m]))",
+          "expr": "sum(count_over_time({service_name=~\"fogis-api-client-service\"} |~ \"Status Code: 200\" [5m]))",
           "legendFormat": "Success",
           "queryType": "",
           "refId": "A"
@@ -431,7 +431,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum(count_over_time({service_name=~\".*calendar.*\"} |~ \"sync.*completed|calendar.*updated\" [24h]))",
+          "expr": "sum(count_over_time({service_name=~\"fogis-calendar-phonebook-sync\"} |~ \"sync.*completed|calendar.*updated\" [24h]))",
           "queryType": "",
           "refId": "A"
         }
