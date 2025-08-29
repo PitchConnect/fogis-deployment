@@ -28,6 +28,37 @@ This repository contains a **complete automated deployment solution** for the FO
 
 **That's it! Your FOGIS system is now fully automated.** 🎉
 
+## **📦 Container Image Deployment**
+
+### **Production GHCR Images**
+
+This deployment now uses **official published container images** from GitHub Container Registry (GHCR):
+
+- **✅ fogis-api-client-service**: `ghcr.io/pitchconnect/fogis-api-client-python:latest`
+- **✅ match-list-processor**: `ghcr.io/pitchconnect/match-list-processor:latest`
+- **✅ google-drive-service**: `ghcr.io/pitchconnect/google-drive-service:latest`
+- **✅ All other services**: Official GHCR images
+
+### **Critical Fixes Included**
+
+The latest GHCR images include these production-ready fixes:
+
+1. **🔧 HTTP Wrapper Parameter Fix**:
+   - Fixed parameter name from `filter` to `filter_params`
+   - Resolves match-list-processor communication issues
+   - Enables proper Google Drive asset upload pipeline
+
+2. **🔧 PyPI Workflow Version Detection Fix**:
+   - Corrected package name in publishing workflow
+   - Robust regex-based version extraction
+   - Ensures reliable future releases
+
+### **No Local Patches Required**
+
+- **❌ No local builds**: All services use published images
+- **❌ No temporary fixes**: All fixes are in official releases
+- **✅ Production ready**: Fully tested and verified deployment
+
 ## **🔐 OAuth Authentication During Startup**
 
 ### **Expected Behavior - No Action Required**
