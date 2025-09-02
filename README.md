@@ -1,5 +1,27 @@
 # 🚀 FOGIS Deployment - Complete Automated Solution
 
+## **🎉 Latest Deployment: v2.1.0 - Enhanced Error Handling & Logging**
+
+**Deployed**: September 2, 2025
+**Status**: ✅ **PRODUCTION READY**
+
+### **🔧 New v2.1.0 Features**
+- **✅ Centralized logging configuration** with contextual formatting
+- **✅ Advanced retry utilities** with circuit breaker patterns
+- **✅ Enhanced API client error handling** with monitoring integration
+- **✅ Comprehensive test suite** with 17 test cases (100% pass rate)
+- **✅ Structured logging** with sensitive data protection
+- **✅ Production-ready error handling** for all external service calls
+
+### **📊 Enhanced Logging Format**
+```
+2025-09-02T18:35:33.479550 - match-list-processor - storage_service - INFO - src.services.storage_service:57 - File uploaded to Google Drive...
+```
+
+**Container Image**: `ghcr.io/pitchconnect/match-list-processor:latest` (v2.1.0)
+
+---
+
 ## **🎯 What This Repository Provides**
 
 This repository contains a **complete automated deployment solution** for the FOGIS containerized system, including:

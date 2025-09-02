@@ -32,33 +32,38 @@ services:
       retries: 3
       start_period: 40s
 
-  # Match list processor - persistent service with internal scheduling
-  match-list-processor:
+  # Match list processor - unified service with enhanced error handling and logging (v2.1.0)
+  process-matches-service:
     image: ghcr.io/pitchconnect/match-list-processor:latest
-    # build:
-    #   context: local-patches/match-list-processor
-    #   dockerfile: Dockerfile.patched
-    container_name: match-list-processor
-    command: ["python", "-m", "src.app_persistent"]  # Use persistent service mode to prevent restart loop
+    container_name: process-matches-service
+    command: ["python", "-m", "src.app_unified"]  # Use unified processor mode
     environment:
+      - PROCESSOR_MODE=unified                    # Enable unified processor mode
+      - RUN_MODE=service                         # Run as persistent service with periodic processing
+      - ENABLE_CHANGE_CATEGORIZATION=true       # Enable enhanced change detection
+      - SERVICE_INTERVAL=3600                    # Processing interval (1 hour) between match checks
       - FOGIS_API_CLIENT_URL=http://fogis-api-client-service:8080
       - CALENDAR_SYNC_URL=http://fogis-calendar-phonebook-sync:5003/sync
       - LOGO_COMBINER_URL=http://team-logo-combiner:5000/combine
       - GOOGLE_DRIVE_URL=http://google-drive-service:5000
       - LOG_LEVEL=INFO
-      - FORCE_FRESH_PROCESSING=false  # Disable for event-driven processing
-      - RUN_MODE=service              # Run as persistent service with periodic processing
-      - SERVICE_INTERVAL=3600         # Processing interval (1 hour) between match checks
+      - FORCE_FRESH_PROCESSING=false            # Disable for event-driven processing
+      # Enhanced Error Handling and Logging Configuration (v2.1.0)
+      - LOG_ENABLE_CONSOLE=true                 # Enable console logging
+      - LOG_ENABLE_FILE=true                    # Enable file logging for production
+      - LOG_ENABLE_STRUCTURED=true              # Enable structured logging with context
+      - LOG_DIR=/app/logs                       # Log directory for file output
+      - LOG_FILE=match-list-processor.log       # Log file name
     volumes:
-      - ./data/match-list-processor:/app/data
-      - ./logs/match-list-processor:/app/logs
+      - ./data/process-matches-service:/app/data
+      - ./logs/process-matches-service:/app/logs
     ports:
-      - "9082:8000"  # Health and webhook endpoints
+      - "9082:8000"  # Health and API endpoints
     networks:
       - fogis-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/simple"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -87,6 +92,7 @@ services:
       - FOGIS_PASSWORD=${FOGIS_PASSWORD}
       - USER_REFEREE_NUMBER=${USER_REFEREE_NUMBER:-12345}
       - GOOGLE_CREDENTIALS_PATH=/app/credentials/google-credentials.json
+      - GOOGLE_CALENDAR_TOKEN_FILE=/app/data/google-calendar/token.json
       - LOG_LEVEL=INFO
       - FLASK_HOST=0.0.0.0  # Bind to all interfaces for inter-container communication
       - FLASK_PORT=5003     # Explicit port configuration matching app default
@@ -94,6 +100,7 @@ services:
       - ./data/fogis-calendar-phonebook-sync:/app/data
       - ./logs/fogis-calendar-phonebook-sync:/app/logs
       - ./credentials:/app/credentials:ro
+      - ./data/fogis-calendar-phonebook-sync/google-calendar:/app/data/google-calendar
       - ../fogis-calendar-phonebook-sync/token.json:/app/token.json:ro  # Contacts OAuth token
     ports:
       - "9083:5003"  # API endpoint
@@ -151,7 +158,7 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-      interval: 30s
+      interval: 60s
       timeout: 10s
       retries: 3
       start_period: 40s
