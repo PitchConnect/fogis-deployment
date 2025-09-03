@@ -96,6 +96,12 @@ services:
       - LOG_LEVEL=INFO
       - FLASK_HOST=0.0.0.0  # Bind to all interfaces for inter-container communication
       - FLASK_PORT=5003     # Explicit port configuration matching app default
+      # Enhanced Error Handling and Logging Configuration (v2.1.0)
+      - LOG_ENABLE_CONSOLE=true                 # Enable console logging
+      - LOG_ENABLE_FILE=true                    # Enable file logging for production
+      - LOG_ENABLE_STRUCTURED=true              # Enable structured logging with context
+      - LOG_DIR=/app/logs                       # Log directory for file output
+      - LOG_FILE=fogis-calendar-phonebook-sync.log  # Log file name
     volumes:
       - ./data/fogis-calendar-phonebook-sync:/app/data
       - ./logs/fogis-calendar-phonebook-sync:/app/logs
@@ -121,6 +127,12 @@ services:
     environment:
       - FLASK_ENV=production
       - LOG_LEVEL=INFO
+      # Enhanced Error Handling and Logging Configuration (v2.1.0)
+      - LOG_ENABLE_CONSOLE=true                 # Enable console logging
+      - LOG_ENABLE_FILE=true                    # Enable file logging for production
+      - LOG_ENABLE_STRUCTURED=true              # Enable structured logging with context
+      - LOG_DIR=/app/logs                       # Log directory for file output
+      - LOG_FILE=team-logo-combiner.log         # Log file name
     volumes:
       - ./data/team-logo-combiner:/app/data
       - ./logs/team-logo-combiner:/app/logs
@@ -147,6 +159,12 @@ services:
       - LOG_LEVEL=INFO
       - FLASK_HOST=0.0.0.0  # Fix: Bind to all interfaces for inter-container communication
       - FLASK_PORT=5000     # Explicit port configuration
+      # Enhanced Error Handling and Logging Configuration (v2.1.0)
+      - LOG_ENABLE_CONSOLE=true                 # Enable console logging
+      - LOG_ENABLE_FILE=true                    # Enable file logging for production
+      - LOG_ENABLE_STRUCTURED=true              # Enable structured logging with context
+      - LOG_DIR=/app/logs                       # Log directory for file output
+      - LOG_FILE=google-drive-service.log       # Log file name
     volumes:
       - ./data/google-drive-service:/app/data
       - ./logs/google-drive-service:/app/logs
