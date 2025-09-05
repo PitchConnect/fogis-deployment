@@ -178,6 +178,25 @@ python3 test_multiplatform.py
 ./manage_fogis_system.sh logs       # View all logs
 ```
 
+### **📧 Notification System Testing:**
+```bash
+# Test notification system (validates configuration and sends test email)
+./test-notifications.sh
+
+# Comprehensive integration test (validates all notification components)
+python3 test-notification-integration.py
+
+# Test specific notification channels
+docker exec process-matches-service python /tmp/simple-notification-test.py
+```
+
+**Notification Testing Features:**
+- ✅ **Configuration Validation**: Checks environment variables and SMTP settings
+- ✅ **Service Health**: Verifies Docker container access and notification system imports
+- ✅ **Email Delivery**: Sends test email to configured SMTP_USERNAME
+- ✅ **Integration Testing**: Validates stakeholder configuration and notification channels
+- ✅ **Error Debugging**: Detailed logging for troubleshooting SMTP issues
+
 ### **Automation:**
 ```bash
 ./manage_fogis_system.sh cron-add     # Add hourly automation
