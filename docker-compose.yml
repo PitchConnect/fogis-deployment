@@ -48,6 +48,18 @@ services:
       - GOOGLE_DRIVE_URL=http://google-drive-service:5000
       - LOG_LEVEL=INFO
       - FORCE_FRESH_PROCESSING=false            # Disable for event-driven processing
+      # Notification System Configuration
+      - NOTIFICATIONS_ENABLED=${NOTIFICATIONS_ENABLED}
+      - EMAIL_ENABLED=${EMAIL_ENABLED}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_FROM=${SMTP_FROM}
+      - SMTP_USE_TLS=${SMTP_USE_TLS}
+      - DISCORD_ENABLED=${DISCORD_ENABLED}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+      - DISCORD_BOT_USERNAME=${DISCORD_BOT_USERNAME}
       # Enhanced Error Handling and Logging Configuration (v2.1.0)
       - LOG_ENABLE_CONSOLE=true                 # Enable console logging
       - LOG_ENABLE_FILE=true                    # Enable file logging for production
@@ -57,6 +69,8 @@ services:
     volumes:
       - ./data/process-matches-service:/app/data
       - ./logs/process-matches-service:/app/logs
+      - ./data/stakeholders.json:/app/data/stakeholders.json:ro
+      - ./match-list-processor/config/notification_channels.yml:/app/config/notification_channels.yml:ro
     ports:
       - "9082:8000"  # Health and API endpoints
     networks:
