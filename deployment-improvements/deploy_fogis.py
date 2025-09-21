@@ -29,6 +29,7 @@ from enhanced_config_system import ConfigurationError, create_match_list_detecto
 from setup_wizard import SetupWizard
 from smart_build_system import BuildError, SmartBuildSystem
 from validation_system import FOGISValidator, HealthStatus
+from redis_deployment_extension import extend_fogis_deployment_with_redis
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -77,9 +78,15 @@ class FOGISDeploymentOrchestrator:
             if not self._deploy_services():
                 raise DeploymentError("Deployment phase failed")
 
-            # Phase 4: Validation
+            # Phase 4: Redis Infrastructure (optional)
+            self._log_step("🔧 Phase 4: Redis Infrastructure")
+            if not self._deploy_redis_infrastructure():
+                self._log_step("⚠️ Redis deployment failed - pub/sub unavailable, continuing with HTTP fallback")
+                # Don't fail entire deployment for Redis
+
+            # Phase 5: Validation
             if not skip_validation:
-                self._log_step("✅ Phase 4: Validation and Health Checks")
+                self._log_step("✅ Phase 5: Validation and Health Checks")
                 if not self._validate_deployment():
                     raise DeploymentError("Validation phase failed")
 
@@ -198,6 +205,15 @@ class FOGISDeploymentOrchestrator:
 
         except Exception as e:
             logger.error(f"Validation failed: {e}")
+            return False
+
+    def _deploy_redis_infrastructure(self) -> bool:
+        """Deploy Redis infrastructure for pub/sub communication."""
+        try:
+            self._log_step("🔧 Deploying Redis infrastructure for pub/sub...")
+            return extend_fogis_deployment_with_redis(self.project_root)
+        except Exception as e:
+            logger.error(f"Redis deployment failed: {e}")
             return False
 
     def _log_step(self, message: str) -> None:

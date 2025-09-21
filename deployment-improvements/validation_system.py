@@ -110,6 +110,11 @@ class FOGISValidator:
                 "port": 9085,
                 "required": False,
             },
+            "redis": {
+                "port": 6379,
+                "required": False,  # Redis is optional - services fall back to HTTP
+                "type": "redis",
+            },
         }
 
     def validate_deployment(self, comprehensive: bool = True) -> Dict[str, Any]:
@@ -256,6 +261,10 @@ class FOGISValidator:
         """Check health of a single service."""
         start_time = time.time()
 
+        # Handle Redis differently (no HTTP health endpoint)
+        if config.get("type") == "redis":
+            return self._check_redis_health()
+
         try:
             response = requests.get(
                 config["health_url"],
@@ -324,6 +333,61 @@ class FOGISValidator:
                 response_time_ms=(time.time() - start_time) * 1000,
                 last_check=datetime.now(),
                 error_message=str(e),
+            )
+
+    def _check_redis_health(self) -> ServiceHealth:
+        """Check Redis health for pub/sub functionality."""
+        start_time = time.time()
+
+        try:
+            # Try to import redis
+            try:
+                import redis
+            except ImportError:
+                return ServiceHealth(
+                    name="redis",
+                    status=HealthStatus.DEGRADED,
+                    response_time_ms=(time.time() - start_time) * 1000,
+                    last_check=datetime.now(),
+                    error_message="Redis package not installed",
+                    details={"pub_sub_enabled": False, "fallback": "HTTP communication available"}
+                )
+
+            # Test Redis connection
+            client = redis.from_url("redis://redis:6379", socket_connect_timeout=5)
+            client.ping()
+
+            # Test pub/sub functionality
+            test_channel = 'fogis_health_check'
+            subscribers = client.publish(test_channel, 'test')
+
+            response_time = (time.time() - start_time) * 1000
+
+            return ServiceHealth(
+                name="redis",
+                status=HealthStatus.HEALTHY,
+                response_time_ms=response_time,
+                last_check=datetime.now(),
+                details={
+                    "status": "healthy",
+                    "message": "Redis pub/sub available",
+                    "pub_sub_enabled": True,
+                    "test_subscribers": subscribers
+                }
+            )
+
+        except Exception as e:
+            return ServiceHealth(
+                name="redis",
+                status=HealthStatus.DEGRADED,
+                response_time_ms=(time.time() - start_time) * 1000,
+                last_check=datetime.now(),
+                error_message=f"Redis unavailable: {e}",
+                details={
+                    "status": "degraded",
+                    "pub_sub_enabled": False,
+                    "fallback": "HTTP communication available"
+                }
             )
 
     def _validate_service_interactions(self) -> List[ValidationResult]:
