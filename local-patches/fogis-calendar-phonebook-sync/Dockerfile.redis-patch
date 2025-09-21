@@ -1,0 +1,27 @@
+# Dockerfile patch for FOGIS Calendar Service with Redis Pub/Sub Integration
+# This extends the existing calendar service with minimal Redis pub/sub functionality
+
+FROM ghcr.io/pitchconnect/fogis-calendar-phonebook-sync:latest
+
+# Install Redis client
+RUN pip install redis
+
+# Copy Redis integration files
+COPY local-patches/fogis-calendar-phonebook-sync/redis_pubsub_integration.py /app/
+COPY local-patches/fogis-calendar-phonebook-sync/app_redis_integration.py /app/
+COPY local-patches/fogis-calendar-phonebook-sync/integrate_with_existing_app.py /app/
+
+# Create startup script that enables Redis integration
+RUN echo '#!/bin/bash\n\
+# Start Redis integration in background\n\
+python3 /app/integrate_with_existing_app.py &\n\
+\n\
+# Start original calendar service\n\
+exec "$@"\n\
+' > /app/start-with-redis.sh && chmod +x /app/start-with-redis.sh
+
+# Use the startup script as entrypoint
+ENTRYPOINT ["/app/start-with-redis.sh"]
+
+# Default command (can be overridden)
+CMD ["python3", "-m", "src.app"]
