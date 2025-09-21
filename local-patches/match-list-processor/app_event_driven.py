@@ -31,6 +31,9 @@ from src.services.storage_service import GoogleDriveStorageService
 from src.types import MatchDict_Dict
 from src.utils.description_generator import generate_whatsapp_description
 
+# Redis pub/sub integration
+from redis_pubsub_integration import publish_match_updates, publish_processing_status, test_redis_connection
+
 logger = logging.getLogger(__name__)
 
 
@@ -54,6 +57,16 @@ class EventDrivenMatchListProcessor:
         self.processing = False
         self.last_processing_time = None
         self.processing_count = 0
+
+        # Test Redis connection on startup
+        try:
+            redis_available = test_redis_connection()
+            if redis_available:
+                logger.info("✅ Redis pub/sub available for match updates")
+            else:
+                logger.info("⚠️ Redis pub/sub not available - will use HTTP fallback")
+        except Exception as e:
+            logger.warning(f"⚠️ Redis connection test failed: {e} - will use HTTP fallback")
 
         # Set up signal handlers for graceful shutdown
         signal.signal(signal.SIGTERM, self._signal_handler)
@@ -167,6 +180,12 @@ class EventDrivenMatchListProcessor:
 
             logger.info(f"Starting match processing (cycle #{self.processing_count})")
 
+            # Publish processing start status
+            try:
+                publish_processing_status("started", {"cycle": self.processing_count})
+            except:
+                pass  # Don't fail on status publishing
+
             # Sync contacts with phonebook
             sync_result = self.phonebook_service.sync_contacts()
             if not sync_result:
@@ -224,11 +243,35 @@ class EventDrivenMatchListProcessor:
                 )
             )
 
+            # Publish match updates via Redis pub/sub (with HTTP fallback)
+            try:
+                # Convert current matches to list format for publishing
+                all_matches = list(current_matches_dict.values())
+
+                # Publish to Redis (non-blocking, falls back to HTTP if Redis unavailable)
+                redis_success = publish_match_updates(all_matches, changes)
+
+                if redis_success:
+                    logger.info("📡 Match updates published via Redis pub/sub")
+                else:
+                    logger.info("📞 Redis unavailable - using HTTP notification fallback")
+                    # TODO: Add HTTP notification fallback here if needed
+                    # This would call the existing calendar service HTTP endpoint
+
+            except Exception as e:
+                logger.error(f"❌ Failed to publish match updates: {e}")
+                # Continue processing - publishing failure shouldn't stop match processing
+
             logger.info("Match processing completed successfully")
 
         except Exception as e:
             logger.error(f"Error during match processing: {e}")
             logger.exception("Stack trace:")
+            # Publish processing failure status
+            try:
+                publish_processing_status("failed", {"error": str(e), "cycle": self.processing_count})
+            except:
+                pass  # Don't fail on status publishing
         finally:
             self.processing = False
 
