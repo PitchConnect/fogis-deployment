@@ -194,7 +194,7 @@ networks:
             Mock(returncode=0, stdout="Up 5 minutes"),  # Container status
             Mock(returncode=0, stdout="PONG"),          # Redis ping
             Mock(returncode=0, stdout="OK"),            # Redis SET
-            Mock(returncode=0, stdout="test_value"),    # Redis GET
+            Mock(returncode=0, stdout="deployment_test"),    # Redis GET
             Mock(returncode=0, stdout="1")              # Redis DEL
         ]
         

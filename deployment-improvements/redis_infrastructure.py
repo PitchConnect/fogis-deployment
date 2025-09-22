@@ -307,9 +307,21 @@ class RedisInfrastructureManager:
             result = subprocess.run([
                 "docker", "ps", "-f", f"name={self.config.container_name}", "--format", "{{.Status}}"
             ], capture_output=True, text=True, timeout=10)
-            
-            return result.returncode == 0 and "Up" in result.stdout
-        except Exception:
+
+            if result.returncode != 0:
+                logger.error(f"❌ Failed to check container status: {result.stderr}")
+                return False
+
+            if "Up" not in result.stdout:
+                logger.error(f"❌ Redis container '{self.config.container_name}' is not running")
+                return False
+
+            return True
+        except subprocess.TimeoutExpired:
+            logger.error(f"❌ Timeout checking if Redis container '{self.config.container_name}' is running")
+            return False
+        except Exception as e:
+            logger.error(f"❌ Error checking Redis container status: {e}")
             return False
     
     def _test_redis_connectivity(self) -> bool:
@@ -319,9 +331,21 @@ class RedisInfrastructureManager:
                 "docker", "exec", self.config.container_name,
                 "redis-cli", "ping"
             ], capture_output=True, text=True, timeout=10)
-            
-            return result.returncode == 0 and "PONG" in result.stdout
-        except Exception:
+
+            if result.returncode != 0:
+                logger.error(f"❌ Redis ping failed: {result.stderr}")
+                return False
+
+            if "PONG" not in result.stdout:
+                logger.error(f"❌ Redis ping returned unexpected response: {result.stdout}")
+                return False
+
+            return True
+        except subprocess.TimeoutExpired:
+            logger.error(f"❌ Timeout testing Redis connectivity for container '{self.config.container_name}'")
+            return False
+        except Exception as e:
+            logger.error(f"❌ Error testing Redis connectivity: {e}")
             return False
     
     def _test_redis_operations(self) -> bool:
@@ -332,28 +356,41 @@ class RedisInfrastructureManager:
                 "docker", "exec", self.config.container_name,
                 "redis-cli", "SET", "fogis:test", "deployment_test"
             ], capture_output=True, text=True, timeout=10)
-            
+
             if set_result.returncode != 0:
+                logger.error(f"❌ Redis SET operation failed: {set_result.stderr}")
                 return False
-            
+
             # Test GET operation
             get_result = subprocess.run([
                 "docker", "exec", self.config.container_name,
                 "redis-cli", "GET", "fogis:test"
             ], capture_output=True, text=True, timeout=10)
-            
-            if get_result.returncode != 0 or "deployment_test" not in get_result.stdout:
+
+            if get_result.returncode != 0:
+                logger.error(f"❌ Redis GET operation failed: {get_result.stderr}")
                 return False
-            
+
+            if "deployment_test" not in get_result.stdout:
+                logger.error(f"❌ Redis GET returned unexpected value: {get_result.stdout}")
+                return False
+
             # Clean up test key
-            subprocess.run([
+            del_result = subprocess.run([
                 "docker", "exec", self.config.container_name,
                 "redis-cli", "DEL", "fogis:test"
             ], capture_output=True, text=True, timeout=10)
-            
+
+            if del_result.returncode != 0:
+                logger.warning(f"⚠️ Failed to clean up test key: {del_result.stderr}")
+
             return True
-            
-        except Exception:
+
+        except subprocess.TimeoutExpired:
+            logger.error(f"❌ Timeout testing Redis operations for container '{self.config.container_name}'")
+            return False
+        except Exception as e:
+            logger.error(f"❌ Error testing Redis operations: {e}")
             return False
 
 # Convenience functions for external use

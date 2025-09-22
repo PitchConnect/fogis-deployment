@@ -28,6 +28,13 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 
+# Import Redis health monitoring
+try:
+    from redis_health_monitoring import RedisHealthMonitor, HealthStatus as RedisHealthStatus
+    REDIS_MONITORING_AVAILABLE = True
+except ImportError:
+    REDIS_MONITORING_AVAILABLE = False
+
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
@@ -340,41 +347,74 @@ class FOGISValidator:
         start_time = time.time()
 
         try:
-            # Try to import redis
-            try:
-                import redis
-            except ImportError:
+            # Use our comprehensive Redis health monitoring if available
+            if REDIS_MONITORING_AVAILABLE:
+                redis_monitor = RedisHealthMonitor(container_name="fogis-redis")
+                health_status = redis_monitor.get_comprehensive_health_status()
+
+                overall_status = health_status.get('overall_status', 'unknown')
+                response_time = (time.time() - start_time) * 1000
+
+                # Map Redis health status to our HealthStatus
+                if overall_status == 'healthy':
+                    status = HealthStatus.HEALTHY
+                    message = "Redis pub/sub infrastructure healthy"
+                elif overall_status == 'degraded':
+                    status = HealthStatus.DEGRADED
+                    message = "Redis pub/sub infrastructure degraded but functional"
+                else:
+                    status = HealthStatus.UNHEALTHY
+                    message = f"Redis pub/sub infrastructure {overall_status}"
+
                 return ServiceHealth(
                     name="redis",
-                    status=HealthStatus.DEGRADED,
-                    response_time_ms=(time.time() - start_time) * 1000,
+                    status=status,
+                    response_time_ms=response_time,
                     last_check=datetime.now(),
-                    error_message="Redis package not installed",
-                    details={"pub_sub_enabled": False, "fallback": "HTTP communication available"}
+                    details={
+                        "comprehensive_health": health_status,
+                        "pub_sub_enabled": overall_status in ['healthy', 'degraded'],
+                        "fallback": "HTTP communication available" if overall_status != 'healthy' else None
+                    }
                 )
 
-            # Test Redis connection
-            client = redis.from_url("redis://redis:6379", socket_connect_timeout=5)
-            client.ping()
+            # Fallback to basic Redis check if monitoring not available
+            else:
+                # Try to import redis
+                try:
+                    import redis
+                except ImportError:
+                    return ServiceHealth(
+                        name="redis",
+                        status=HealthStatus.DEGRADED,
+                        response_time_ms=(time.time() - start_time) * 1000,
+                        last_check=datetime.now(),
+                        error_message="Redis package not installed",
+                        details={"pub_sub_enabled": False, "fallback": "HTTP communication available"}
+                    )
 
-            # Test pub/sub functionality
-            test_channel = 'fogis_health_check'
-            subscribers = client.publish(test_channel, 'test')
+                # Test Redis connection
+                client = redis.from_url("redis://redis:6379", socket_connect_timeout=5)
+                client.ping()
 
-            response_time = (time.time() - start_time) * 1000
+                # Test pub/sub functionality
+                test_channel = 'fogis_health_check'
+                subscribers = client.publish(test_channel, 'test')
 
-            return ServiceHealth(
-                name="redis",
-                status=HealthStatus.HEALTHY,
-                response_time_ms=response_time,
-                last_check=datetime.now(),
-                details={
-                    "status": "healthy",
-                    "message": "Redis pub/sub available",
-                    "pub_sub_enabled": True,
-                    "test_subscribers": subscribers
-                }
-            )
+                response_time = (time.time() - start_time) * 1000
+
+                return ServiceHealth(
+                    name="redis",
+                    status=HealthStatus.HEALTHY,
+                    response_time_ms=response_time,
+                    last_check=datetime.now(),
+                    details={
+                        "status": "healthy",
+                        "message": "Redis pub/sub available (basic check)",
+                        "pub_sub_enabled": True,
+                        "test_subscribers": subscribers
+                    }
+                )
 
         except Exception as e:
             return ServiceHealth(

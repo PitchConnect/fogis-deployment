@@ -29,7 +29,7 @@ from enhanced_config_system import ConfigurationError, create_match_list_detecto
 from setup_wizard import SetupWizard
 from smart_build_system import BuildError, SmartBuildSystem
 from validation_system import FOGISValidator, HealthStatus
-from redis_deployment_extension import extend_fogis_deployment_with_redis
+from redis_infrastructure import RedisInfrastructureManager
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -211,7 +211,36 @@ class FOGISDeploymentOrchestrator:
         """Deploy Redis infrastructure for pub/sub communication."""
         try:
             self._log_step("🔧 Deploying Redis infrastructure for pub/sub...")
-            return extend_fogis_deployment_with_redis(self.project_root)
+
+            # Initialize Redis infrastructure manager
+            redis_manager = RedisInfrastructureManager(project_root=self.project_root)
+
+            # Deploy Redis service
+            deployment_result = redis_manager.deploy_redis_service()
+
+            if deployment_result.success:
+                self._log_step("✅ Redis service deployed successfully")
+
+                # Configure persistence
+                if redis_manager.configure_redis_persistence():
+                    self._log_step("💾 Redis persistence configured")
+                else:
+                    self._log_step("⚠️ Redis persistence configuration warning")
+
+                # Validate deployment
+                if redis_manager.validate_redis_deployment():
+                    self._log_step("🔍 Redis deployment validated")
+                    return True
+                else:
+                    self._log_step("❌ Redis deployment validation failed")
+                    return False
+            else:
+                self._log_step(f"❌ Redis deployment failed: {deployment_result.message}")
+                if deployment_result.errors:
+                    for error in deployment_result.errors:
+                        self._log_step(f"   - {error}")
+                return False
+
         except Exception as e:
             logger.error(f"Redis deployment failed: {e}")
             return False
