@@ -284,6 +284,27 @@ services:
   #     retries: 3
   #     start_period: 40s
 
+  # Redis pub/sub infrastructure for real-time communication
+  redis:
+    image: redis:7-alpine
+    container_name: fogis-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - fogis-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    environment:
+      - REDIS_REPLICATION_MODE=master
+
 networks:
   fogis-network:
     driver: bridge
@@ -295,3 +316,5 @@ volumes:
   logo-data:
   drive-data:
   grafana-storage:
+  redis-data:
+    driver: local

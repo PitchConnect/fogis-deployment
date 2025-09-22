@@ -1,0 +1,258 @@
+groups:
+  - name: fogis-oauth-authentication
+    interval: 1m
+    rules:
+      - uid: fogis-oauth-failure-critical
+        title: "FOGIS OAuth Authentication Failure - CRITICAL"
+        condition: C
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasource:
+              type: loki
+              uid: loki
+            model:
+              editorMode: code
+              expr: 'count_over_time({container_name="fogis-api-client-service"} |= "CRITICAL OAUTH AUTHENTICATION FAILURE" [5m])'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            queryType: ""
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasource:
+              type: __expr__
+              uid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: []
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - B
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              hide: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            queryType: ""
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasource:
+              type: __expr__
+              uid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              hide: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Alerting
+        for: 0s
+        annotations:
+          description: "🚨 CRITICAL: FOGIS OAuth authentication has failed! The system cannot authenticate with the FOGIS API, which will prevent match data synchronization. Immediate attention required."
+          runbook_url: "https://github.com/PitchConnect/fogis-deployment/wiki/OAuth-Troubleshooting"
+          summary: "FOGIS OAuth authentication failure detected"
+        labels:
+          severity: critical
+          service: fogis-api-client
+          component: oauth
+          team: platform
+
+      - uid: fogis-oauth-recovery
+        title: "FOGIS OAuth Authentication Recovery"
+        condition: C
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasource:
+              type: loki
+              uid: loki
+            model:
+              editorMode: code
+              expr: 'count_over_time({container_name="fogis-api-client-service"} |= "OAuth authentication recovered" [5m])'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            queryType: ""
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasource:
+              type: __expr__
+              uid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: []
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - B
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              hide: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            queryType: ""
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasource:
+              type: __expr__
+              uid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              hide: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: NoData
+        for: 0s
+        annotations:
+          description: "✅ RECOVERY: FOGIS OAuth authentication has recovered and is working normally again."
+          summary: "FOGIS OAuth authentication has recovered"
+        labels:
+          severity: info
+          service: fogis-api-client
+          component: oauth
+          team: platform
+
+      - uid: fogis-service-health-degraded
+        title: "FOGIS API Client Service Health Degraded"
+        condition: C
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasource:
+              type: loki
+              uid: loki
+            model:
+              editorMode: code
+              expr: 'count_over_time({container_name="fogis-api-client-service"} |= "Health check FAILED" [5m])'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            queryType: ""
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasource:
+              type: __expr__
+              uid: __expr__
+            model:
+              expression: A
+              hide: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            queryType: ""
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasource:
+              type: __expr__
+              uid: __expr__
+            model:
+              expression: B
+              hide: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+              conditions:
+                - evaluator:
+                    params:
+                      - 2
+                    type: gt
+        noDataState: NoData
+        execErrState: Alerting
+        for: 2m
+        annotations:
+          description: "⚠️ WARNING: FOGIS API Client service health checks are failing. This may indicate service instability or connectivity issues."
+          summary: "FOGIS API Client service health degraded"
+        labels:
+          severity: warning
+          service: fogis-api-client
+          component: health
+          team: platform
