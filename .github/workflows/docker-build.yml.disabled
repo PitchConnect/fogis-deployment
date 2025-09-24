@@ -1,0 +1,167 @@
+name: Build and Push Docker Images
+
+on:
+  release:
+    types: [published]
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/pitchconnect
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - name: fogis-api-client
+            context: fogis-api-client-python
+            image: fogis-api-client-service
+          - name: team-logo-combiner
+            context: team-logo-combiner
+            image: team-logo-combiner
+          - name: match-list-processor
+            context: match-list-processor
+            image: match-list-processor
+          - name: match-list-change-detector
+            context: match-list-change-detector
+            image: match-list-change-detector
+          - name: fogis-calendar-phonebook-sync
+            context: fogis-calendar-phonebook-sync
+            image: fogis-calendar-phonebook-sync
+          - name: google-drive-service
+            context: google-drive-service
+            image: google-drive-service
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}/${{ matrix.service.image }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Check if Dockerfile exists
+        id: dockerfile-check
+        run: |
+          if [ -f "${{ matrix.service.context }}/Dockerfile" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Dockerfile not found for ${{ matrix.service.name }}"
+          fi
+
+      - name: Build and push Docker image
+        if: steps.dockerfile-check.outputs.exists == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.service.context }}
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Generate build summary
+        if: steps.dockerfile-check.outputs.exists == 'true'
+        run: |
+          echo "## 🐳 Docker Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "**Service:** ${{ matrix.service.name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** ${{ env.IMAGE_PREFIX }}/${{ matrix.service.image }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Tags:** ${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Platforms:** linux/amd64, linux/arm64" >> $GITHUB_STEP_SUMMARY
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [fogis-api-client-service, team-logo-combiner, match-list-processor, match-list-change-detector, fogis-calendar-phonebook-sync, google-drive-service]
+
+    steps:
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if image exists in registry
+        id: image-check
+        run: |
+          # Check if the image exists in the registry before scanning
+          if docker manifest inspect ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:latest >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Image ${{ matrix.service }} exists in registry"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Image ${{ matrix.service }} not found in registry - skipping security scan"
+          fi
+
+      - name: Run Trivy vulnerability scanner
+        if: steps.image-check.outputs.exists == 'true'
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:latest
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'  # Don't fail on vulnerabilities, just report them
+          cache-dir: /tmp/trivy-cache
+
+      - name: Upload Trivy scan results
+        if: steps.image-check.outputs.exists == 'true' && always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+        continue-on-error: true  # Don't fail if SARIF upload fails
+
+      - name: Generate security scan summary
+        if: steps.image-check.outputs.exists == 'true'
+        run: |
+          echo "## 🔒 Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "**Service:** ${{ matrix.service }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:latest" >> $GITHUB_STEP_SUMMARY
+          echo "**Scanner:** Trivy v0.28.0" >> $GITHUB_STEP_SUMMARY
+          echo "**Severity Filter:** CRITICAL, HIGH" >> $GITHUB_STEP_SUMMARY
+          if [ -f trivy-results.sarif ]; then
+            echo "**Status:** ✅ Scan completed successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Status:** ⚠️ Scan results not available" >> $GITHUB_STEP_SUMMARY
+          fi

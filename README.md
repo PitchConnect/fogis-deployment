@@ -32,6 +32,30 @@ This repository contains a **complete automated deployment solution** for the FO
 - ✅ **Comprehensive documentation** for non-technical users
 - ✅ **Health monitoring** and troubleshooting tools
 
+## **🏗️ Architecture: Service-Owned Images**
+
+This deployment repository follows **modern DevOps best practices** with a **service-owned images architecture**:
+
+### **📦 Container Images**
+- **Service repositories** build and publish their own Docker images to GitHub Container Registry (GHCR)
+- **Deployment repository** references pre-built images with semantic versioning
+- **No local builds** - all images are pulled from `ghcr.io/pitchconnect/*`
+
+### **🔄 CI/CD Pipeline**
+- **Service repos**: Build, test, and publish images on code changes
+- **Deployment repo**: Orchestrates services using published images
+- **Automated updates**: Dependabot manages image version updates
+
+### **📋 Service Images Used**
+```yaml
+services:
+  match-list-processor: ghcr.io/pitchconnect/match-list-processor:latest
+  fogis-calendar-sync: ghcr.io/pitchconnect/fogis-calendar-phonebook-sync:latest
+  team-logo-combiner: ghcr.io/pitchconnect/team-logo-combiner:latest
+  google-drive-service: ghcr.io/pitchconnect/google-drive-service:latest
+  fogis-api-client: ghcr.io/pitchconnect/fogis-api-client-python:latest
+```
+
 ## **🚀 Quick Start (4 Commands)**
 
 ```bash

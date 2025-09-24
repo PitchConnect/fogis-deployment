@@ -1,4 +1,10 @@
 
+# Service-Owned Images Architecture
+# Each service builds and publishes its own Docker images to GHCR
+# Version pinning strategy:
+# - All PitchConnect services: Use :latest (automatic updates, services manage their own releases)
+# - External services: Use specific versions for stability (e.g., redis:7-alpine, grafana/loki:2.9.0)
+# - Future: Implement semantic versioning when services publish formal release tags
 
 # Load environment variables from .env file
 # This ensures FOGIS credentials and other configuration are properly loaded

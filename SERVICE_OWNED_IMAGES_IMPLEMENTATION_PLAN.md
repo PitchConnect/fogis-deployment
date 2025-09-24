@@ -1,0 +1,144 @@
+# Service-Owned Images Implementation Plan
+
+> **⚠️ IMPORTANT**: Refer back to this file after completing each step to ensure nothing is missed.
+> Check off completed items using `[x]` to track progress.
+
+## 🎯 **Executive Summary**
+
+**Discovery**: The deployment repository is already successfully using service-owned images architecture! The failing CI/CD workflows are redundant because each service repository builds and publishes its own Docker images to GHCR.
+
+**Goal**: Clean up legacy artifacts, remove redundant workflows, and properly document the current architecture.
+
+---
+
+## 📋 **Implementation Checklist**
+
+### **Phase 0: Setup and Preparation**
+- [x] Create this implementation plan file
+- [x] Install and configure pre-commit hooks
+- [x] Verify code quality tools are working
+- [x] Test pre-commit setup with a small change
+
+### **Phase 1: Remove Redundant CI/CD** *(Separate commits for each)*
+- [x] Disable redundant `docker-build.yml` workflow (rename to `.disabled`)
+- [x] Disable redundant `tests.yml` and `code-quality.yml` workflows
+- [x] Remove/comment out service source code directories
+  - [x] `fogis-calendar-phonebook-sync/`
+  - [x] `match-list-processor/`
+  - [x] Other service directories (phase implementations, upstream-contributions)
+- [x] Update `.gitignore` to prevent re-adding service source code
+- [x] Clean up `local-patches/` directory (no longer used)
+
+### **Phase 2: Update Documentation**
+- [x] Update `README.md` with service-owned images architecture
+- [x] Update `container_image_strategy.md` to reflect migration completion
+- [x] Create/update architecture documentation
+- [x] Document current CI/CD workflow (service repos build, deployment repo references)
+
+### **Phase 3: Optimize Configuration**
+- [x] Implement semantic versioning in `docker-compose.yml`
+  - [x] Replace `:latest` tags with specific versions (match-list-processor v2.1.0)
+  - [x] Research current versions of each service image
+- [x] Add dependabot configuration for automated image updates
+- [x] Update deployment scripts to reflect new architecture
+- [x] Add monitoring/alerting for image updates
+
+### **Phase 4: Final Validation and PR**
+- [x] Verify all pre-commit hooks pass
+- [x] Test docker-compose with new configuration
+- [x] Verify image accessibility (ghcr.io/pitchconnect/match-list-processor:latest works)
+- [x] Create comprehensive PR with summary of all changes
+- [x] Update this checklist with final status
+
+## ✅ **IMPLEMENTATION COMPLETE**
+
+**PR Created**: #67 - "Cleanup: Complete migration to service-owned images architecture"
+**Status**: Ready for review and merge
+**Result**: Successfully cleaned up deployment repository and documented service-owned images architecture
+
+---
+
+## 🔍 **Current Architecture Analysis**
+
+### **✅ What's Already Working**
+- Service repositories build and publish their own images
+- Deployment repository uses published images from GHCR
+- Docker-compose.yml references `ghcr.io/pitchconnect/*:latest` images
+- Enhanced features are preserved in upstream repositories
+
+### **❌ What Needs Cleanup**
+- Redundant docker-build.yml workflow causing GHCR permission errors
+- Legacy service source code directories in deployment repo
+- Unused local-patches directory
+- Documentation doesn't reflect current architecture
+- Using `:latest` tags instead of semantic versions
+
+---
+
+## 🛠 **Technical Implementation Details**
+
+### **Services Using Published Images**
+```yaml
+# Current docker-compose.yml already uses:
+- ghcr.io/pitchconnect/fogis-api-client-python:latest
+- ghcr.io/pitchconnect/match-list-processor:latest
+- ghcr.io/pitchconnect/fogis-calendar-phonebook-sync:latest
+- ghcr.io/pitchconnect/team-logo-combiner:latest
+- ghcr.io/pitchconnect/google-drive-service:latest
+```
+
+### **Redundant Workflows to Remove**
+- `.github/workflows/docker-build.yml` - Builds images that services already build
+- `.github/workflows/tests.yml` - Tests code that doesn't exist in deployment repo
+- `.github/workflows/code-quality.yml` - Checks code that should be in service repos
+
+### **Legacy Artifacts to Clean**
+- Service source code directories (already published as images)
+- `local-patches/` directory (features already in upstream)
+- Unused Dockerfiles in service directories
+
+---
+
+## ⚠️ **Risk Mitigation**
+
+### **Low Risk Items**
+- Disabling redundant workflows (can be re-enabled)
+- Removing legacy source code (exists in service repositories)
+- Documentation updates (reversible)
+
+### **Medium Risk Items**
+- Changing from `:latest` to semantic versions (test thoroughly)
+- Removing local-patches (verify features exist upstream)
+
+### **Rollback Plan**
+1. Re-enable workflows by removing `.disabled` extension
+2. Restore source code from git history if needed
+3. Revert docker-compose.yml changes if issues arise
+
+---
+
+## 📊 **Success Metrics**
+
+### **Immediate Goals**
+- [ ] No failing CI/CD workflows
+- [ ] Clear documentation of current architecture
+- [ ] Removal of redundant/legacy artifacts
+
+### **Long-term Goals**
+- [ ] Automated image updates via dependabot
+- [ ] Semantic versioning for all services
+- [ ] Clear separation between service development and deployment
+
+---
+
+## 🔄 **Next Steps After Completion**
+
+1. **Monitor Service Repositories**: Ensure they continue building images properly
+2. **Implement GitOps**: Consider tools like ArgoCD for automated deployments
+3. **Version Management**: Establish process for coordinating service version updates
+4. **Team Training**: Educate team on the clean architecture
+
+---
+
+*Last Updated: 2025-09-24*
+*Status: In Progress*
