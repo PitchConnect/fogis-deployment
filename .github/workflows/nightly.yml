@@ -58,7 +58,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ${{ fromJson(format('["{0}"]', github.event.inputs.python_versions || env.DEFAULT_PYTHON_VERSIONS)) }}
+        python-version: ['3.9', '3.10', '3.11']
         service:
           - name: fogis-api-client
             path: fogis-api-client-python
