@@ -1,5 +1,8 @@
 # Dependabot Testing Strategy for FOGIS Deployment
 
+⚠️ **ARCHITECTURE TRANSITION NOTICE**: This document is being updated for Redis pub/sub architecture.
+The current HTTP-based service communication patterns will be replaced with Redis pub/sub messaging.
+
 ## 🎯 **Overview**
 
 This document outlines the comprehensive testing strategy for validating dependabot PRs in the FOGIS deployment repository, addressing the testing gaps in our service-owned images architecture.

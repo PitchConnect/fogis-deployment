@@ -1,5 +1,9 @@
 name: Dependabot PR Validation
 
+# ⚠️ ARCHITECTURE TRANSITION NOTICE:
+# This workflow will be updated for Redis pub/sub architecture
+# Current HTTP-based tests will be replaced with Redis connectivity validation
+
 on:
   pull_request:
     types: [opened, synchronize]

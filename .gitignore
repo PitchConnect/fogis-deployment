@@ -193,3 +193,47 @@ google-drive-*/
 local-patches/
 phase*-implementation/
 upstream-contributions/
+
+# Temporary and test files
+temp_*
+test_*
+*_temp*
+*.tmp
+*.temp
+*~
+*.bak
+*.backup
+__pycache__/
+*.pyc
+*.pyo
+
+# Emergency and patch files
+emergency_*
+*_emergency*
+patch_*
+*_patch*
+oauth_monkey_patch*
+
+# Backup directories and files
+*backup*/
+*-backup-*/
+*.backup-*
+oauth_deployment_backup/
+
+# Obsolete documentation and reports
+*-analysis.md
+*_analysis_report.md
+*_implementation_summary.md
+*_troubleshooting.md
+*_resolution.md
+migration_preparation_status.md
+multiplatform_test_report.md
+
+# Development and testing artifacts
+deployment-improvements/
+tools/
+stacks/
+pr_descriptions/
+tests/unit/
+tests/e2e/
+tests/integration/
