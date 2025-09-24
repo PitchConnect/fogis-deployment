@@ -2,9 +2,9 @@
 # Service-Owned Images Architecture
 # Each service builds and publishes its own Docker images to GHCR
 # Version pinning strategy:
-# - Services with formal releases: Use semantic versions (e.g., v2.1.0)
-# - Services without releases: Use :latest (will be pinned as releases become available)
-# - External services: Use specific versions for stability
+# - All PitchConnect services: Use :latest (automatic updates, services manage their own releases)
+# - External services: Use specific versions for stability (e.g., redis:7-alpine, grafana/loki:2.9.0)
+# - Future: Implement semantic versioning when services publish formal release tags
 
 # Load environment variables from .env file
 # This ensures FOGIS credentials and other configuration are properly loaded
@@ -40,7 +40,7 @@ services:
 
   # Match list processor - unified service with enhanced error handling and logging (v2.1.0)
   process-matches-service:
-    image: ghcr.io/pitchconnect/match-list-processor:v2.1.0
+    image: ghcr.io/pitchconnect/match-list-processor:latest
     container_name: process-matches-service
     command: ["python", "-m", "src.app_unified"]  # Use unified processor mode
     environment:
