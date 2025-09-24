@@ -30,10 +30,10 @@
 - [x] Clean up `local-patches/` directory (no longer used)
 
 ### **Phase 2: Update Documentation**
-- [ ] Update `README.md` with service-owned images architecture
-- [ ] Update `container_image_strategy.md` to reflect migration completion
-- [ ] Create/update architecture documentation
-- [ ] Document current CI/CD workflow (service repos build, deployment repo references)
+- [x] Update `README.md` with service-owned images architecture
+- [x] Update `container_image_strategy.md` to reflect migration completion
+- [x] Create/update architecture documentation
+- [x] Document current CI/CD workflow (service repos build, deployment repo references)
 
 ### **Phase 3: Optimize Configuration**
 - [ ] Implement semantic versioning in `docker-compose.yml`
