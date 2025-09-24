@@ -1,0 +1,9 @@
+# Redis Integration Dependencies for Calendar Service
+redis>=4.5.0
+
+# Testing Dependencies (for development)
+pytest>=7.0.0
+pytest-mock>=3.10.0
+
+# Optional: Enhanced logging and monitoring
+structlog>=22.0.0

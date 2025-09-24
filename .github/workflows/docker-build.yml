@@ -104,12 +104,24 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-and-push
     if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
 
     strategy:
+      fail-fast: false
       matrix:
         service: [fogis-api-client-service, team-logo-combiner, match-list-processor, match-list-change-detector, fogis-calendar-phonebook-sync, google-drive-service]
 
     steps:
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Check if image exists in registry
         id: image-check
         run: |
@@ -124,14 +136,32 @@ jobs:
 
       - name: Run Trivy vulnerability scanner
         if: steps.image-check.outputs.exists == 'true'
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:latest
           format: 'sarif'
           output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'  # Don't fail on vulnerabilities, just report them
+          cache-dir: /tmp/trivy-cache
 
       - name: Upload Trivy scan results
         if: steps.image-check.outputs.exists == 'true' && always()
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-results.sarif'
+        continue-on-error: true  # Don't fail if SARIF upload fails
+
+      - name: Generate security scan summary
+        if: steps.image-check.outputs.exists == 'true'
+        run: |
+          echo "## 🔒 Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "**Service:** ${{ matrix.service }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:latest" >> $GITHUB_STEP_SUMMARY
+          echo "**Scanner:** Trivy v0.28.0" >> $GITHUB_STEP_SUMMARY
+          echo "**Severity Filter:** CRITICAL, HIGH" >> $GITHUB_STEP_SUMMARY
+          if [ -f trivy-results.sarif ]; then
+            echo "**Status:** ✅ Scan completed successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Status:** ⚠️ Scan results not available" >> $GITHUB_STEP_SUMMARY
+          fi

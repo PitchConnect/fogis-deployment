@@ -1,0 +1,52 @@
+[match-list-processor] {"service_name":"match-list-processor","version":"1.0.0","status":"healthy","uptime_seconds":430338.86645150185,"timestamp":"2025-08-26T20:47:05.602991Z","dependencies":{"fogis-api-client":{"name":"fogis-api-client","url":"http://fogis-api-client-service:8080/health","status":"healthy","response_time_ms":47.65057563781738,"error":null,"last_checked":"2025-08-26T20:47:05.602901Z"},"whatsapp-avatar-service":{"name":"whatsapp-avatar-service","url":"http://whatsapp-avatar-service:5002/health","status":"healthy","response_time_ms":34.78050231933594,"error":null,"last_checked":"2025-08-26T20:47:05.590466Z"},"google-drive-service":{"name":"google-drive-service","url":"http://google-drive-service:5000/health","status":"healthy","response_time_ms":43.47491264343262,"error":null,"last_checked":"2025-08-26T20:47:05.599056Z"},"phonebook-sync-service":{"name":"phonebook-sync-service","url":"http://fogis-calendar-phonebook-sync:5003/health","status":"healthy","response_time_ms":45.82500457763672,"error":null,"last_checked":"2025-08-26T20:47:05.601433Z"}},"details":{"data_folder":"/data","min_referees_for_whatsapp":2,"log_level":"INFO","python_version":"3.9+","environment":"production"}}
+[fogis-calendar-phonebook-sync] {"auth_status":"authenticated","environment":"development","oauth_info":{"expires_in_hours":0.1,"has_refresh_token":true,"location":"/app/data/google-calendar/token.json","status":"authenticated","token_expiry":"2025-08-26T20:50:56.693348Z"},"status":"healthy","token_location":"/app/data/google-calendar/token.json","version":"dev"}
+
+[google-drive-service] {"service":"google-drive-service","status":"healthy","timestamp":1756241225.8646398,"version":"2025.08.7"}
+
+[fogis-api-client-service] {
+  "dependencies": {
+    "fogis_client": "available"
+  },
+  "process": {
+    "memory_mb": 50.1484375,
+    "memory_percent": 1.2794881250186871
+  },
+  "python": {
+    "implementation": "CPython",
+    "version": "3.11.13"
+  },
+  "service": "fogis-api-client",
+  "status": "healthy",
+  "system": {
+    "cpu_count": 8,
+    "hostname": "9afdb7b1262b",
+    "ip_addresses": {
+      "erspan0": [],
+      "eth0": [
+        "172.20.0.8"
+      ],
+      "gre0": [],
+      "gretap0": [],
+      "ip6_vti0": [],
+      "ip6gre0": [],
+      "ip6tnl0": [],
+      "ip_vti0": [],
+      "lo": [
+        "127.0.0.1"
+      ],
+      "sit0": [],
+      "tunl0": []
+    },
+    "platform": "Linux-6.10.14-linuxkit-aarch64-with-glibc2.31"
+  },
+  "timestamp": "2025-08-26T22:47:05.973753",
+  "uptime": 430339.1440193653,
+  "version": "1.0.0"
+}
+
+[team-logo-combiner] {
+  "service": "whatsapp-avatar-service",
+  "status": "healthy",
+  "timestamp": 1756241226.094531
+}
+

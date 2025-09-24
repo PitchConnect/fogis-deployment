@@ -1,0 +1,200 @@
+version: "3.9"
+
+services:
+  fogis-api-client-service:
+    image: ghcr.io/pitchconnect/fogis-api-client-python:latest
+    container_name: fogis-api-client-service
+    environment:
+      - FOGIS_USERNAME=${FOGIS_USERNAME}
+      - FOGIS_PASSWORD=${FOGIS_PASSWORD}
+      - FLASK_DEBUG=${DEBUG_MODE:-0}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - ./data/fogis-api-client:/app/data
+      - ./logs/fogis-api-client:/app/logs
+    ports:
+      - "${API_CLIENT_PORT:-9086}:8080"
+    networks: [fogis-network]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  match-list-processor:
+    image: ghcr.io/pitchconnect/match-list-processor:latest
+    container_name: match-list-processor
+    command: ["python", "-m", "src.app_persistent"]
+    environment:
+      - FOGIS_API_CLIENT_URL=http://fogis-api-client-service:8080
+      - CALENDAR_SYNC_URL=http://fogis-calendar-phonebook-sync:5003/sync
+      - LOGO_COMBINER_URL=http://team-logo-combiner:5000/combine
+      - GOOGLE_DRIVE_URL=http://google-drive-service:5000
+      - LOG_LEVEL=INFO
+      - FORCE_FRESH_PROCESSING=false
+      - RUN_MODE=service
+      - SERVICE_INTERVAL=3600
+    volumes:
+      - ./data/match-list-processor:/app/data
+      - ./logs/match-list-processor:/app/logs
+    ports:
+      - "9082:8000"
+    networks: [fogis-network]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      fogis-api-client-service:
+        condition: service_healthy
+      fogis-calendar-phonebook-sync:
+        condition: service_healthy
+      team-logo-combiner:
+        condition: service_healthy
+      google-drive-service:
+        condition: service_healthy
+
+  fogis-calendar-phonebook-sync:
+    image: ghcr.io/pitchconnect/fogis-calendar-phonebook-sync:latest
+    container_name: fogis-calendar-phonebook-sync
+    environment:
+      - FOGIS_USERNAME=${FOGIS_USERNAME}
+      - FOGIS_PASSWORD=${FOGIS_PASSWORD}
+      - USER_REFEREE_NUMBER=${USER_REFEREE_NUMBER:-12345}
+      - GOOGLE_CREDENTIALS_PATH=/app/credentials/google-credentials.json
+      - GOOGLE_CALENDAR_TOKEN_FILE=/app/data/google-calendar/token.json
+      - LOG_LEVEL=INFO
+      - FLASK_HOST=0.0.0.0
+      - FLASK_PORT=5003
+    volumes:
+      - ./data/fogis-calendar-phonebook-sync:/app/data
+      - ./logs/fogis-calendar-phonebook-sync:/app/logs
+      - ./credentials:/app/credentials:ro
+      - ./data/fogis-calendar-phonebook-sync/google-calendar:/app/data/google-calendar
+      - ../fogis-calendar-phonebook-sync/token.json:/app/token.json:ro
+    ports:
+      - "9083:5003"
+      - "9084:8080"
+      - "9087:8090"
+    networks:
+      fogis-network:
+        aliases: [fogis-sync]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  team-logo-combiner:
+    image: ghcr.io/pitchconnect/team-logo-combiner:latest
+    container_name: team-logo-combiner
+    environment:
+      - FLASK_ENV=production
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./data/team-logo-combiner:/app/data
+      - ./logs/team-logo-combiner:/app/logs
+    ports:
+      - "9088:5002"
+    networks:
+      fogis-network:
+        aliases: [whatsapp-avatar-service]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  google-drive-service:
+    image: ghcr.io/pitchconnect/google-drive-service:latest
+    container_name: google-drive-service
+    environment:
+      - GOOGLE_CREDENTIALS_PATH=/app/credentials/google-credentials.json
+      - LOG_LEVEL=INFO
+      - FLASK_HOST=0.0.0.0
+      - FLASK_PORT=5000
+    volumes:
+      - ./data/google-drive-service:/app/data
+      - ./logs/google-drive-service:/app/logs
+      - ./credentials:/app/credentials:ro
+    ports:
+      - "9085:5000"
+    networks: [fogis-network]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: fogis-loki
+    ports: ["3100:3100"]
+    volumes:
+      - ./monitoring/loki:/loki
+      - ./monitoring/loki-config.yaml:/etc/loki/local-config.yaml
+    command: -config.file=/etc/loki/local-config.yaml
+    networks: [fogis-network]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3100/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  promtail:
+    image: grafana/promtail:2.9.0
+    container_name: fogis-promtail
+    volumes:
+      - ./logs:/var/log/fogis:ro
+      - ./monitoring/promtail-config.yaml:/etc/promtail/config.yml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks: [fogis-network]
+    restart: unless-stopped
+    depends_on:
+      loki:
+        condition: service_healthy
+
+  grafana:
+    image: grafana/grafana:10.0.0
+    container_name: fogis-grafana
+    ports: ["3000:3000"]
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    networks: [fogis-network]
+    restart: unless-stopped
+    depends_on:
+      loki:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  fogis-network:
+    driver: bridge
+
+volumes:
+  grafana-storage:
+

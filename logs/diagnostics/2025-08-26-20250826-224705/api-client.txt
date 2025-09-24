@@ -1,0 +1,52 @@
+---> /health
+{
+  "dependencies": {
+    "fogis_client": "available"
+  },
+  "process": {
+    "memory_mb": 50.1484375,
+    "memory_percent": 1.2794881250186871
+  },
+  "python": {
+    "implementation": "CPython",
+    "version": "3.11.13"
+  },
+  "service": "fogis-api-client",
+  "status": "healthy",
+  "system": {
+    "cpu_count": 8,
+    "hostname": "9afdb7b1262b",
+    "ip_addresses": {
+      "erspan0": [],
+      "eth0": [
+        "172.20.0.8"
+      ],
+      "gre0": [],
+      "gretap0": [],
+      "ip6_vti0": [],
+      "ip6gre0": [],
+      "ip6tnl0": [],
+      "ip_vti0": [],
+      "lo": [
+        "127.0.0.1"
+      ],
+      "sit0": [],
+      "tunl0": []
+    },
+    "platform": "Linux-6.10.14-linuxkit-aarch64-with-glibc2.31"
+  },
+  "timestamp": "2025-08-26T22:47:06.486727",
+  "uptime": 430339.657099247,
+  "version": "1.0.0"
+}
+
+---> /matches?date=2025-08-26
+{
+  "error": "API request failed: 401 Client Error: Unauthorized for url: https://fogis.svenskfotboll.se/mdk/MatchWebMetoder.aspx/GetMatcherAttRapportera"
+}
+
+---> /matches?from=2025-08-24&to=2025-08-26
+{
+  "error": "API request failed: 401 Client Error: Unauthorized for url: https://fogis.svenskfotboll.se/mdk/MatchWebMetoder.aspx/GetMatcherAttRapportera"
+}
+
