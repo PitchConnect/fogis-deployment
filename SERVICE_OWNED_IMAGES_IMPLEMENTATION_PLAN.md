@@ -22,12 +22,12 @@
 ### **Phase 1: Remove Redundant CI/CD** *(Separate commits for each)*
 - [x] Disable redundant `docker-build.yml` workflow (rename to `.disabled`)
 - [x] Disable redundant `tests.yml` and `code-quality.yml` workflows
-- [ ] Remove/comment out service source code directories
-  - [ ] `fogis-calendar-phonebook-sync/`
-  - [ ] `match-list-processor/`
-  - [ ] Other service directories if present
-- [ ] Update `.gitignore` to prevent re-adding service source code
-- [ ] Clean up `local-patches/` directory (no longer used)
+- [x] Remove/comment out service source code directories
+  - [x] `fogis-calendar-phonebook-sync/`
+  - [x] `match-list-processor/`
+  - [x] Other service directories (phase implementations, upstream-contributions)
+- [x] Update `.gitignore` to prevent re-adding service source code
+- [x] Clean up `local-patches/` directory (no longer used)
 
 ### **Phase 2: Update Documentation**
 - [ ] Update `README.md` with service-owned images architecture
