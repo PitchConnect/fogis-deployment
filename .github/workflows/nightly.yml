@@ -103,14 +103,14 @@ jobs:
 
       - name: Set up Python ${{ matrix.python-version }} (with cache)
         if: steps.service-check.outputs.has_python == 'true'
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
 
       - name: Set up Python ${{ matrix.python-version }} (without cache)
         if: steps.service-check.outputs.has_python == 'false'
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
