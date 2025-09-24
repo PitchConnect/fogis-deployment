@@ -1,0 +1,106 @@
+{
+  "backup_info": {
+    "type": "complete",
+    "created_at": "2025-07-15T16:32:11.984022",
+    "version": "1.0",
+    "system": {
+      "sysname": "Darwin",
+      "nodename": "docker-admins-MacBook-Air.local",
+      "release": "24.4.0",
+      "version": "Darwin Kernel Version 24.4.0: Fri Apr 11 18:32:43 PDT 2025; root:xnu-11417.101.15~117/RELEASE_ARM64_T8103",
+      "machine": "arm64"
+    }
+  },
+  "files": [
+    {
+      "path": "config/config.json",
+      "size": 641,
+      "modified": "2025-07-14T16:54:42.124624"
+    },
+    {
+      "path": "config/.env",
+      "size": 1087,
+      "modified": "2025-07-14T21:19:05.071571"
+    },
+    {
+      "path": "config/fogis-config.yaml",
+      "size": 5024,
+      "modified": "2025-07-14T16:54:42.125063"
+    },
+    {
+      "path": "logs/quick-setup.log",
+      "size": 1443,
+      "modified": "2025-07-14T09:17:22.724818"
+    },
+    {
+      "path": "logs/match-list-change-detector/match_list_change_detector.log",
+      "size": 6156059,
+      "modified": "2025-07-14T21:07:35.650722"
+    },
+    {
+      "path": "logs/team-logo-combiner/team_logo_combiner.log",
+      "size": 1386334,
+      "modified": "2025-07-14T16:56:14.655511"
+    },
+    {
+      "path": "data/calendar-sync/calendar-token.json",
+      "size": 55,
+      "modified": "2025-07-14T16:56:22.106751"
+    },
+    {
+      "path": "data/google-drive-service/token.json",
+      "size": 727,
+      "modified": "2025-07-10T20:56:29.236443"
+    },
+    {
+      "path": "data/google-drive-service/google-drive-token.json",
+      "size": 52,
+      "modified": "2025-07-14T16:56:15.208225"
+    },
+    {
+      "path": "data/match-list-change-detector/previous_matches.json",
+      "size": 44162,
+      "modified": "2025-07-15T16:30:26.190170"
+    },
+    {
+      "path": "data/fogis-calendar-phonebook-sync/token.json",
+      "size": 792,
+      "modified": "2025-07-10T20:49:23"
+    },
+    {
+      "path": "credentials/google-credentials.json",
+      "size": 31,
+      "modified": "2025-07-14T16:56:30.403948"
+    },
+    {
+      "path": "credentials/tokens/calendar-token.json",
+      "size": 55,
+      "modified": "2025-07-14T16:56:22.106751"
+    },
+    {
+      "path": "credentials/tokens/google-drive-token.json",
+      "size": 52,
+      "modified": "2025-07-14T16:56:15.208225"
+    }
+  ],
+  "directories": [
+    "config",
+    "logs",
+    "data",
+    "credentials",
+    "logs/fogis-api-client",
+    "logs/match-list-processor",
+    "logs/google-drive-service",
+    "logs/match-list-change-detector",
+    "logs/fogis-calendar-phonebook-sync",
+    "logs/team-logo-combiner",
+    "data/fogis-api-client",
+    "data/match-list-processor",
+    "data/calendar-sync",
+    "data/google-drive-service",
+    "data/match-list-change-detector",
+    "data/fogis-calendar-phonebook-sync",
+    "data/team-logo-combiner",
+    "credentials/tokens"
+  ]
+}

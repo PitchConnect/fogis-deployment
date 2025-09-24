@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  vikunja:
+    image: vikunja/vikunja:latest
+    container_name: vikunja-family-tasks
+    restart: unless-stopped
+    ports:
+      - "3456:3456"
+    volumes:
+      - ~/vikunja/files:/app/vikunja/files
+      - ~/vikunja/config:/etc/vikunja
+      - ~/vikunja/db:/app/vikunja/db
+    environment:
+      # Database Configuration (SQLite)
+      VIKUNJA_DATABASE_TYPE: sqlite
+      VIKUNJA_DATABASE_PATH: /app/vikunja/db/vikunja.db
+      
+      # Service Configuration
+      VIKUNJA_SERVICE_PUBLICURL: http://localhost:3456
+      VIKUNJA_SERVICE_ENABLEREGISTRATION: false
+      VIKUNJA_SERVICE_ENABLEEMAILREMINDERS: false
+      VIKUNJA_SERVICE_ENABLETASKATTACHMENTS: true
+      VIKUNJA_SERVICE_TIMEZONE: UTC
+      
+      # Security Settings
+      VIKUNJA_SERVICE_JWTSECRET: prjEgoGhzmygO/PyoM6eaEcvLcO09rNoBeHymAxWmr0=
+      VIKUNJA_SERVICE_ENABLEPUBLICTEAMS: false
+      
+      # Disable Email/SMTP
+      VIKUNJA_MAILER_ENABLED: false
+      
+      # File Upload Settings
+      VIKUNJA_FILES_MAXSIZE: 20MB
+      
+      # Rate Limiting
+      VIKUNJA_RATELIMIT_ENABLED: true
+      VIKUNJA_RATELIMIT_KIND: user
+      VIKUNJA_RATELIMIT_LIMIT: 100
+      VIKUNJA_RATELIMIT_PERIOD: 60
+      
+      # Logging
+      VIKUNJA_LOG_LEVEL: INFO
+      VIKUNJA_LOG_DATABASE: off
+      
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3456/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  default:
+    name: vikunja-network

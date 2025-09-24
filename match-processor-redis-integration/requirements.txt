@@ -1,0 +1,26 @@
+# Redis pub/sub integration dependencies for Match List Processor
+# Added for Phase 2: Match Processor Redis Integration
+
+# Redis client library
+redis>=4.5.0,<5.0.0
+
+# JSON handling (usually included in Python standard library)
+# No additional dependencies required for json module
+
+# UUID generation (included in Python standard library)
+# No additional dependencies required for uuid module
+
+# Datetime handling (included in Python standard library)
+# No additional dependencies required for datetime module
+
+# Logging (included in Python standard library)
+# No additional dependencies required for logging module
+
+# Type hints (included in Python 3.5+)
+# No additional dependencies required for typing module
+
+# Dataclasses (included in Python 3.7+)
+# No additional dependencies required for dataclasses module
+
+# Note: This file should be merged with the existing requirements.txt
+# in the match-list-processor repository by adding the redis dependency

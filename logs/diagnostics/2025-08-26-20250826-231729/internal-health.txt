@@ -1,0 +1,52 @@
+[match-list-processor] {"service_name":"match-list-processor","version":"1.0.0","status":"healthy","uptime_seconds":432163.31088519096,"timestamp":"2025-08-26T21:17:30.047425Z","dependencies":{"fogis-api-client":{"name":"fogis-api-client","url":"http://fogis-api-client-service:8080/health","status":"healthy","response_time_ms":30.976295471191406,"error":null,"last_checked":"2025-08-26T21:17:30.040332Z"},"whatsapp-avatar-service":{"name":"whatsapp-avatar-service","url":"http://whatsapp-avatar-service:5002/health","status":"healthy","response_time_ms":30.02166748046875,"error":null,"last_checked":"2025-08-26T21:17:30.039673Z"},"google-drive-service":{"name":"google-drive-service","url":"http://google-drive-service:5000/health","status":"healthy","response_time_ms":33.51426124572754,"error":null,"last_checked":"2025-08-26T21:17:30.043173Z"},"phonebook-sync-service":{"name":"phonebook-sync-service","url":"http://fogis-calendar-phonebook-sync:5003/health","status":"healthy","response_time_ms":37.60194778442383,"error":null,"last_checked":"2025-08-26T21:17:30.047296Z"}},"details":{"data_folder":"/data","min_referees_for_whatsapp":2,"log_level":"INFO","python_version":"3.9+","environment":"production"}}
+[fogis-calendar-phonebook-sync] {"auth_status":"authenticated","environment":"development","oauth_info":{"expires_in_hours":0.6,"has_refresh_token":true,"location":"/app/data/google-calendar/token.json","status":"authenticated","token_expiry":"2025-08-26T21:51:13.293427Z"},"status":"healthy","token_location":"/app/data/google-calendar/token.json","version":"dev"}
+
+[google-drive-service] {"service":"google-drive-service","status":"healthy","timestamp":1756243050.23958,"version":"2025.08.7"}
+
+[fogis-api-client-service] {
+  "dependencies": {
+    "fogis_client": "available"
+  },
+  "process": {
+    "memory_mb": 50.1484375,
+    "memory_percent": 1.2794881250186871
+  },
+  "python": {
+    "implementation": "CPython",
+    "version": "3.11.13"
+  },
+  "service": "fogis-api-client",
+  "status": "healthy",
+  "system": {
+    "cpu_count": 8,
+    "hostname": "9afdb7b1262b",
+    "ip_addresses": {
+      "erspan0": [],
+      "eth0": [
+        "172.20.0.8"
+      ],
+      "gre0": [],
+      "gretap0": [],
+      "ip6_vti0": [],
+      "ip6gre0": [],
+      "ip6tnl0": [],
+      "ip_vti0": [],
+      "lo": [
+        "127.0.0.1"
+      ],
+      "sit0": [],
+      "tunl0": []
+    },
+    "platform": "Linux-6.10.14-linuxkit-aarch64-with-glibc2.31"
+  },
+  "timestamp": "2025-08-26T23:17:30.350701",
+  "uptime": 432163.52099633217,
+  "version": "1.0.0"
+}
+
+[team-logo-combiner] {
+  "service": "whatsapp-avatar-service",
+  "status": "healthy",
+  "timestamp": 1756243050.4468336
+}
+

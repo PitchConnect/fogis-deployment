@@ -1,0 +1,13 @@
+NAMES                           IMAGE                                                       STATUS                PORTS
+strange_mclaren                 ghcr.io/github/github-mcp-server                            Up 11 hours           
+modest_keldysh                  ghcr.io/github/github-mcp-server                            Up 11 hours           
+fogis-calendar-phonebook-sync   ghcr.io/pitchconnect/fogis-calendar-phonebook-sync:latest   Up 5 days (healthy)   0.0.0.0:9083->5003/tcp, [::]:9083->5003/tcp, 0.0.0.0:9084->8080/tcp, [::]:9084->8080/tcp, 0.0.0.0:9087->8090/tcp, [::]:9087->8090/tcp
+google-drive-service            ghcr.io/pitchconnect/google-drive-service:latest            Up 5 days (healthy)   0.0.0.0:9085->5000/tcp, [::]:9085->5000/tcp
+fogis-api-client-service        ghcr.io/pitchconnect/fogis-api-client-python:latest         Up 5 days (healthy)   0.0.0.0:9086->8080/tcp, [::]:9086->8080/tcp
+fogis-grafana                   grafana/grafana:10.0.0                                      Up 5 days (healthy)   0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+fogis-promtail                  grafana/promtail:2.9.0                                      Up 5 days             
+fogis-loki                      grafana/loki:2.9.0                                          Up 5 days (healthy)   0.0.0.0:3100->3100/tcp, [::]:3100->3100/tcp
+match-list-processor            ghcr.io/pitchconnect/match-list-processor:latest            Up 5 days (healthy)   0.0.0.0:9082->8000/tcp, [::]:9082->8000/tcp
+team-logo-combiner              ghcr.io/pitchconnect/team-logo-combiner:latest              Up 5 days (healthy)   0.0.0.0:9088->5002/tcp, [::]:9088->5002/tcp
+portainer                       portainer/portainer-ce:latest                               Up 5 days             8000/tcp, 9443/tcp, 0.0.0.0:9000->9000/tcp
+portainer_agent                 portainer/agent:latest                                      Up 5 days             0.0.0.0:9001->9001/tcp

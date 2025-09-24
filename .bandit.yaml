@@ -1,0 +1,54 @@
+# Bandit security configuration for FOGIS deployment
+# This configuration provides security scanning for Python code
+
+# Paths to exclude from scanning
+exclude_dirs:
+  - tests
+  - test
+  - .venv
+  - venv
+  - env
+  - .env
+  - __pycache__
+  - .git
+  - build
+  - dist
+  - .mypy_cache
+  - .pytest_cache
+  - backups
+  - logs
+  - data
+  - credentials
+  - monitoring
+  - stacks
+  - templates
+  - upstream-contributions
+  - fogis-backup-complete-*
+
+# Tests to skip (with justification)
+skips:
+  # B101: assert_used - asserts are acceptable in test code and development
+  - B101
+  # B311: random is not suitable for security/cryptographic purposes - not used for security
+  - B311
+  # B314: blacklist calls to xml.etree.ElementTree.parse - not used for parsing untrusted XML
+  - B314
+  # B320: blacklist calls to lxml.etree.parse - not used for parsing untrusted XML
+  - B320
+  # B403: pickle import - used safely for token serialization in controlled environment
+  - B403
+  # B404: import of subprocess module - used safely for system operations
+  - B404
+  # B603: subprocess call with shell=True - used safely in controlled contexts
+  - B603
+  # B607: start process with a partial path - used safely in deployment scripts
+  - B607
+
+# Minimum confidence level for issues to be reported
+confidence: MEDIUM
+
+# Severity level for issues to be reported
+severity: MEDIUM
+
+# Output format
+format: json

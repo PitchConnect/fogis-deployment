@@ -1,0 +1,160 @@
+apiVersion: 1
+
+# Notification Policies Configuration
+# This configures how alerts are routed to different notification channels
+
+policies:
+  - orgId: 1
+    receiver: default-receiver
+    group_by: ['alertname', 'severity']
+    group_wait: 10s
+    group_interval: 5m
+    repeat_interval: 12h
+    routes:
+      # Critical alerts - immediate notification via multiple channels
+      - match:
+          severity: critical
+        receiver: critical-alerts
+        group_wait: 0s
+        repeat_interval: 1h
+        
+      # Authentication failures - immediate notification
+      - match:
+          component: fogis-authentication
+        receiver: auth-alerts
+        group_wait: 0s
+        repeat_interval: 30m
+        
+      # OAuth failures - immediate notification
+      - match:
+          component: oauth
+        receiver: oauth-alerts
+        group_wait: 0s
+        repeat_interval: 30m
+        
+      # Service health issues - standard notification
+      - match:
+          component: service-health
+        receiver: service-alerts
+        group_wait: 30s
+        repeat_interval: 2h
+        
+      # Match processing issues - immediate notification for referee
+      - match:
+          component: match-processing
+        receiver: match-alerts
+        group_wait: 0s
+        repeat_interval: 1h
+
+contactPoints:
+  - orgId: 1
+    name: default-receiver
+    receivers:
+      - uid: default-email
+        type: email
+        settings:
+          addresses: ["${SMTP_USERNAME}"]
+          subject: "[FOGIS] System Alert"
+          
+  - orgId: 1
+    name: critical-alerts
+    receivers:
+      - uid: critical-email
+        type: email
+        settings:
+          addresses: ["${SMTP_USERNAME}"]
+          subject: "[FOGIS CRITICAL] {{ .GroupLabels.alertname }}"
+          message: |
+            🚨 **CRITICAL ALERT** 🚨
+            
+            **Alert:** {{ .GroupLabels.alertname }}
+            **Severity:** {{ .GroupLabels.severity }}
+            **Time:** {{ .CommonAnnotations.timestamp }}
+            
+            **Description:** {{ .CommonAnnotations.description }}
+            
+            **Affected Service:** {{ .GroupLabels.service }}
+            
+            Please investigate immediately.
+            
+            **Runbook:** {{ .CommonAnnotations.runbook_url }}
+            
+  - orgId: 1
+    name: auth-alerts
+    receivers:
+      - uid: auth-email
+        type: email
+        settings:
+          addresses: ["${SMTP_USERNAME}"]
+          subject: "[FOGIS AUTH] Authentication Issue Detected"
+          message: |
+            🔐 **Authentication Alert**
+            
+            **Issue:** {{ .GroupLabels.alertname }}
+            **Component:** {{ .GroupLabels.component }}
+            **Time:** {{ .CommonAnnotations.timestamp }}
+            
+            **Description:** {{ .CommonAnnotations.description }}
+            
+            The FOGIS authentication system has detected an issue that may affect match processing.
+            
+            **Action Required:** Check service logs and authentication status.
+            
+  - orgId: 1
+    name: oauth-alerts
+    receivers:
+      - uid: oauth-email
+        type: email
+        settings:
+          addresses: ["${SMTP_USERNAME}"]
+          subject: "[FOGIS OAUTH] Google API Authentication Issue"
+          message: |
+            🔑 **OAuth Authentication Alert**
+            
+            **Issue:** {{ .GroupLabels.alertname }}
+            **Time:** {{ .CommonAnnotations.timestamp }}
+            
+            **Description:** {{ .CommonAnnotations.description }}
+            
+            Google API authentication may be failing, which could affect calendar synchronization.
+            
+            **Action Required:** Check OAuth tokens and Google API access.
+            
+  - orgId: 1
+    name: service-alerts
+    receivers:
+      - uid: service-email
+        type: email
+        settings:
+          addresses: ["${SMTP_USERNAME}"]
+          subject: "[FOGIS SERVICE] {{ .GroupLabels.alertname }}"
+          message: |
+            ⚠️ **Service Health Alert**
+            
+            **Service:** {{ .GroupLabels.service }}
+            **Issue:** {{ .GroupLabels.alertname }}
+            **Time:** {{ .CommonAnnotations.timestamp }}
+            
+            **Description:** {{ .CommonAnnotations.description }}
+            
+            A FOGIS service is experiencing issues.
+            
+  - orgId: 1
+    name: match-alerts
+    receivers:
+      - uid: match-email
+        type: email
+        settings:
+          addresses: ["${SMTP_USERNAME}"]
+          subject: "[FOGIS MATCHES] Match Processing Issue"
+          message: |
+            ⚽ **Match Processing Alert**
+            
+            **Issue:** {{ .GroupLabels.alertname }}
+            **Time:** {{ .CommonAnnotations.timestamp }}
+            
+            **Description:** {{ .CommonAnnotations.description }}
+            
+            There may be an issue with match list processing that could affect your referee assignments.
+            
+            **Action Required:** Check match processing logs and service status.

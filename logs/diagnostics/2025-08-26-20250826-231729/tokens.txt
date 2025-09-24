@@ -1,0 +1,10 @@
+[drive] present:
+yes
+[drive] refresh_token:
+yes
+[calendar] present:
+yes
+[calendar] refresh_token:
+yes
+[contacts] present:
+yes
