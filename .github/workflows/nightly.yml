@@ -88,32 +88,43 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: 'pip'
-
       - name: Check service structure
         id: service-check
         working-directory: ${{ matrix.service.path }}
         run: |
           echo "Checking ${{ matrix.service.name }} structure..."
-          
+
           # Check for Python files
           if find . -name "*.py" -type f | head -1 | grep -q .; then
             echo "has_python=true" >> $GITHUB_OUTPUT
           else
             echo "has_python=false" >> $GITHUB_OUTPUT
           fi
-          
+
+      - name: Set up Python ${{ matrix.python-version }} (with cache)
+        if: steps.service-check.outputs.has_python == 'true'
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Set up Python ${{ matrix.python-version }} (without cache)
+        if: steps.service-check.outputs.has_python == 'false'
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Complete service structure check
+        id: service-check-complete
+        working-directory: ${{ matrix.service.path }}
+        run: |
           # Check for tests
           if [ -d "tests" ] || find . -name "test_*.py" -type f | head -1 | grep -q .; then
             echo "has_tests=true" >> $GITHUB_OUTPUT
           else
             echo "has_tests=false" >> $GITHUB_OUTPUT
           fi
-          
+
           # Check for requirements
           if [ -f "requirements.txt" ]; then
             echo "has_requirements=true" >> $GITHUB_OUTPUT
@@ -126,9 +137,9 @@ jobs:
         working-directory: ${{ matrix.service.path }}
         run: |
           python -m pip install --upgrade pip
-          
+
           # Install requirements if they exist
-          if [ "${{ steps.service-check.outputs.has_requirements }}" = "true" ]; then
+          if [ "${{ steps.service-check-complete.outputs.has_requirements }}" = "true" ]; then
             pip install -r requirements.txt
           fi
           
@@ -143,7 +154,7 @@ jobs:
           pip install safety pip-audit
 
       - name: Run comprehensive tests
-        if: steps.service-check.outputs.has_tests == 'true'
+        if: steps.service-check-complete.outputs.has_tests == 'true'
         working-directory: ${{ matrix.service.path }}
         run: |
           echo "Running comprehensive tests for ${{ matrix.service.name }} on Python ${{ matrix.python-version }}"
@@ -168,14 +179,14 @@ jobs:
           python -m bandit -r . -f json -o bandit-results.json || echo "Bandit completed"
 
       - name: Run dependency security scans
-        if: steps.service-check.outputs.has_requirements == 'true'
+        if: steps.service-check-complete.outputs.has_requirements == 'true'
         working-directory: ${{ matrix.service.path }}
         run: |
           echo "Running dependency security scans..."
-          
+
           # Safety check for known vulnerabilities
           python -m safety check --json --output safety-results.json || echo "Safety scan completed"
-          
+
           # Pip-audit for additional security checks
           python -m pip_audit --format=json --output=pip-audit-results.json || echo "Pip-audit completed"
 
@@ -185,8 +196,8 @@ jobs:
           echo "**Service:** ${{ matrix.service.name }}" >> $GITHUB_STEP_SUMMARY
           echo "**Python Version:** ${{ matrix.python-version }}" >> $GITHUB_STEP_SUMMARY
           echo "**Has Python Code:** ${{ steps.service-check.outputs.has_python }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Has Tests:** ${{ steps.service-check.outputs.has_tests }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Has Requirements:** ${{ steps.service-check.outputs.has_requirements }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Has Tests:** ${{ steps.service-check-complete.outputs.has_tests }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Has Requirements:** ${{ steps.service-check-complete.outputs.has_requirements }}" >> $GITHUB_STEP_SUMMARY
 
   create-issue-on-failure:
     runs-on: ubuntu-latest

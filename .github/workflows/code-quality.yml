@@ -37,12 +37,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
-
       - name: Check if service has Python code
         id: python-check
         run: |
@@ -53,6 +47,19 @@ jobs:
             echo "has_python=false" >> $GITHUB_OUTPUT
             echo "⚠️ No Python code found in ${{ matrix.service.name }}"
           fi
+
+      - name: Set up Python (with cache)
+        if: steps.python-check.outputs.has_python == 'true'
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Set up Python (without cache)
+        if: steps.python-check.outputs.has_python == 'false'
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
         if: steps.python-check.outputs.has_python == 'true'
