@@ -183,3 +183,13 @@ app/token.json
 
 # Data directory with sensitive information
 data/
+
+# Service source code should not be in deployment repo
+# Services build their own images in their respective repositories
+fogis-*/
+match-list-*/
+team-logo-*/
+google-drive-*/
+local-patches/
+phase*-implementation/
+upstream-contributions/

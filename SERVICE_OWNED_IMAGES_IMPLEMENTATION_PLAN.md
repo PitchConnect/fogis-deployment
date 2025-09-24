@@ -20,7 +20,8 @@
 - [x] Test pre-commit setup with a small change
 
 ### **Phase 1: Remove Redundant CI/CD** *(Separate commits for each)*
-- [ ] Disable redundant `docker-build.yml` workflow (rename to `.disabled`)
+- [x] Disable redundant `docker-build.yml` workflow (rename to `.disabled`)
+- [x] Disable redundant `tests.yml` and `code-quality.yml` workflows
 - [ ] Remove/comment out service source code directories
   - [ ] `fogis-calendar-phonebook-sync/`
   - [ ] `match-list-processor/`
