@@ -182,7 +182,7 @@ jobs:
           echo "## 📊 Overall Quality Results" >> $GITHUB_STEP_SUMMARY
           echo "**Service Checks:** ${{ needs.pre-commit-checks.result }}" >> $GITHUB_STEP_SUMMARY
           echo "**Global Checks:** ${{ needs.global-pre-commit.result }}" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ "${{ needs.pre-commit-checks.result }}" = "success" ] && [ "${{ needs.global-pre-commit.result }}" = "success" ]; then
             echo "**Overall Status:** ✅ All quality checks passed" >> $GITHUB_STEP_SUMMARY
           else
