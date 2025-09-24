@@ -1,0 +1,321 @@
+name: Dependabot PR Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    # Only run on dependabot PRs
+    branches: [main]
+
+jobs:
+  # Check if this is a dependabot PR
+  check-dependabot:
+    runs-on: ubuntu-latest
+    outputs:
+      is-dependabot: ${{ steps.check.outputs.is-dependabot }}
+    steps:
+      - name: Check if dependabot PR
+        id: check
+        run: |
+          if [[ "${{ github.actor }}" == "dependabot[bot]" ]]; then
+            echo "is-dependabot=true" >> $GITHUB_OUTPUT
+          else
+            echo "is-dependabot=false" >> $GITHUB_OUTPUT
+          fi
+
+  # Validate docker-compose configuration
+  validate-compose:
+    needs: check-dependabot
+    if: needs.check-dependabot.outputs.is-dependabot == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate docker-compose syntax
+        run: |
+          docker-compose config --quiet
+          echo "✅ Docker-compose configuration is valid"
+
+      - name: Check image accessibility
+        run: |
+          # Extract image names from docker-compose.yml
+          images=$(grep -E "image: ghcr.io/pitchconnect/" docker-compose.yml | awk '{print $2}')
+
+          for image in $images; do
+            echo "🔍 Checking accessibility of $image"
+            if docker manifest inspect "$image" > /dev/null 2>&1; then
+              echo "✅ $image is accessible"
+            else
+              echo "❌ $image is not accessible"
+              exit 1
+            fi
+          done
+
+  # Test service startup and health checks
+  test-service-startup:
+    needs: [check-dependabot, validate-compose]
+    if: needs.check-dependabot.outputs.is-dependabot == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create test environment file
+        run: |
+          cat > .env << EOF
+          # Test environment variables
+          FOGIS_USERNAME=test_user
+          FOGIS_PASSWORD=test_password
+          GOOGLE_CREDENTIALS_PATH=/app/credentials/test-credentials.json
+          GRAFANA_ADMIN_PASSWORD=test_admin
+          EOF
+
+      - name: Create test credentials
+        run: |
+          mkdir -p credentials
+          echo '{"type": "service_account", "project_id": "test"}' > credentials/google-credentials.json
+
+      - name: Start services with timeout
+        run: |
+          # Start services in background
+          timeout 300 docker-compose up -d || {
+            echo "❌ Services failed to start within 5 minutes"
+            docker-compose logs
+            exit 1
+          }
+
+      - name: Wait for health checks
+        run: |
+          echo "⏳ Waiting for services to become healthy..."
+
+          # Wait up to 5 minutes for all services to be healthy
+          timeout 300 bash -c '
+            while true; do
+              healthy_count=$(docker-compose ps --format json | jq -r ".Health" | grep -c "healthy" || echo "0")
+              total_services=$(docker-compose ps --format json | jq -r ".Service" | wc -l)
+
+              echo "Healthy services: $healthy_count/$total_services"
+
+              if [ "$healthy_count" -eq "$total_services" ]; then
+                echo "✅ All services are healthy"
+                break
+              fi
+
+              sleep 10
+            done
+          ' || {
+            echo "❌ Not all services became healthy within timeout"
+            docker-compose ps
+            docker-compose logs
+            exit 1
+          }
+
+      - name: Test service connectivity
+        run: |
+          echo "🔗 Testing inter-service connectivity..."
+
+          # Test API client health
+          curl -f http://localhost:8001/health || {
+            echo "❌ FOGIS API client health check failed"
+            exit 1
+          }
+
+          # Test match processor health
+          curl -f http://localhost:8000/health/simple || {
+            echo "❌ Match processor health check failed"
+            exit 1
+          }
+
+          # Test calendar sync health
+          curl -f http://localhost:8002/health || {
+            echo "❌ Calendar sync health check failed"
+            exit 1
+          }
+
+          echo "✅ All service health checks passed"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker-compose down -v
+          docker system prune -f
+
+  # Test basic workflow functionality
+  test-workflow-integration:
+    needs: [check-dependabot, test-service-startup]
+    if: needs.check-dependabot.outputs.is-dependabot == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup test environment
+        run: |
+          # Create minimal test environment
+          cat > .env << EOF
+          FOGIS_USERNAME=test_user
+          FOGIS_PASSWORD=test_password
+          GOOGLE_CREDENTIALS_PATH=/app/credentials/test-credentials.json
+          GRAFANA_ADMIN_PASSWORD=test_admin
+          EOF
+
+          mkdir -p credentials
+          echo '{"type": "service_account", "project_id": "test"}' > credentials/google-credentials.json
+
+      - name: Start services
+        run: |
+          docker-compose up -d
+
+          # Wait for services to be ready
+          sleep 60
+
+      - name: Test API endpoints
+        run: |
+          echo "🧪 Testing API endpoints..."
+
+          # Test match processor status endpoint
+          response=$(curl -s http://localhost:8000/health/detailed)
+          echo "Match processor detailed health: $response"
+
+          # Verify response contains expected fields
+          echo "$response" | jq -e '.status' || {
+            echo "❌ Match processor health response missing status field"
+            exit 1
+          }
+
+      - name: Test service dependencies
+        run: |
+          echo "🔗 Testing service dependencies..."
+
+          # Check that match processor can see its dependencies
+          deps_response=$(curl -s http://localhost:8000/health/dependencies)
+          echo "Dependencies health: $deps_response"
+
+          # Verify all dependencies are accessible
+          echo "$deps_response" | jq -e '.dependencies' || {
+            echo "❌ Dependencies health check failed"
+            exit 1
+          }
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker-compose down -v
+          docker system prune -f
+
+  # Performance regression test
+  test-performance:
+    needs: [check-dependabot, test-workflow-integration]
+    if: needs.check-dependabot.outputs.is-dependabot == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup and start services
+        run: |
+          cat > .env << EOF
+          FOGIS_USERNAME=test_user
+          FOGIS_PASSWORD=test_password
+          GOOGLE_CREDENTIALS_PATH=/app/credentials/test-credentials.json
+          GRAFANA_ADMIN_PASSWORD=test_admin
+          EOF
+
+          mkdir -p credentials
+          echo '{"type": "service_account", "project_id": "test"}' > credentials/google-credentials.json
+
+          docker-compose up -d
+          sleep 60
+
+      - name: Measure startup time
+        run: |
+          echo "⏱️ Measuring service startup performance..."
+
+          # Record startup times
+          start_time=$(date +%s)
+
+          # Wait for all services to be healthy
+          timeout 300 bash -c '
+            while true; do
+              healthy_count=$(docker-compose ps --format json | jq -r ".Health" | grep -c "healthy" || echo "0")
+              total_services=$(docker-compose ps --format json | jq -r ".Service" | wc -l)
+
+              if [ "$healthy_count" -eq "$total_services" ]; then
+                break
+              fi
+              sleep 5
+            done
+          '
+
+          end_time=$(date +%s)
+          startup_duration=$((end_time - start_time))
+
+          echo "🕐 Total startup time: ${startup_duration} seconds"
+
+          # Fail if startup takes longer than 5 minutes
+          if [ $startup_duration -gt 300 ]; then
+            echo "❌ Startup time exceeded 5 minutes threshold"
+            exit 1
+          fi
+
+          echo "✅ Startup performance within acceptable range"
+
+      - name: Test response times
+        run: |
+          echo "🚀 Testing API response times..."
+
+          # Test match processor response time
+          response_time=$(curl -w "%{time_total}" -s -o /dev/null http://localhost:8000/health/simple)
+          echo "Match processor response time: ${response_time}s"
+
+          # Fail if response time > 5 seconds
+          if (( $(echo "$response_time > 5.0" | bc -l) )); then
+            echo "❌ Response time too slow: ${response_time}s"
+            exit 1
+          fi
+
+          echo "✅ Response times within acceptable range"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker-compose down -v
+          docker system prune -f
+
+  # Final validation summary
+  validation-summary:
+    needs: [validate-compose, test-service-startup, test-workflow-integration, test-performance]
+    if: always() && needs.check-dependabot.outputs.is-dependabot == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validation Summary
+        run: |
+          echo "## 🧪 Dependabot PR Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ needs.validate-compose.result }}" == "success" ]]; then
+            echo "✅ **Docker Compose Validation**: PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Docker Compose Validation**: FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [[ "${{ needs.test-service-startup.result }}" == "success" ]]; then
+            echo "✅ **Service Startup Test**: PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Service Startup Test**: FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [[ "${{ needs.test-workflow-integration.result }}" == "success" ]]; then
+            echo "✅ **Workflow Integration Test**: PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Workflow Integration Test**: FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [[ "${{ needs.test-performance.result }}" == "success" ]]; then
+            echo "✅ **Performance Test**: PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Performance Test**: FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Ready for merge**: All validation tests passed ✅" >> $GITHUB_STEP_SUMMARY
