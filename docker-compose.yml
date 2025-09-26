@@ -76,6 +76,14 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_ENABLED=true
+      # Enhanced Schema v2.0 configuration
+      - REDIS_SCHEMA_VERSION=2.0
+      - REDIS_PUBLISH_LEGACY=true
+      - REDIS_PUBLISH_V1=true
+      - REDIS_PUBLISH_V2=true
+      # Logo service integration
+      - LOGO_COMBINER_URL=http://team-logo-combiner:5002
+      - LOGO_SERVICE_ENABLED=true
     volumes:
       - ./data/process-matches-service:/app/data
       - ./logs/process-matches-service:/app/logs
@@ -124,6 +132,14 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_ENABLED=true
+      # Enhanced Schema v2.0 configuration
+      - REDIS_SCHEMA_VERSION=2.0
+      - REDIS_FALLBACK_SCHEMAS=1.5,1.0
+      - REDIS_SUBSCRIPTION_TIMEOUT=30
+      # Logo service integration
+      - LOGO_COMBINER_URL=http://team-logo-combiner:5002
+      - LOGO_SERVICE_ENABLED=true
+      - LOGO_CACHE_ENABLED=true
     volumes:
       - ./data/fogis-calendar-phonebook-sync:/app/data
       - ./logs/fogis-calendar-phonebook-sync:/app/logs
