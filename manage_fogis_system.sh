@@ -83,6 +83,11 @@ show_usage() {
     echo "Quick Deployment:"
     echo "  quick-setup     - Lightning-fast deployment (5-10 minutes)"
     echo ""
+    echo "Testing Commands:"
+    echo "  test-integration - Run Redis pub/sub integration tests"
+    echo "  test-setup      - Set up integration test environment"
+    echo "  test-cleanup    - Clean up integration test environment"
+    echo ""
     echo "Other Commands:"
     echo "  clean       - Clean up stopped containers and images"
     echo "  check-updates - Check for available image updates"
@@ -522,6 +527,36 @@ except Exception as e:
             exit 1
         fi
         print_status "Quick setup completed successfully"
+        ;;
+    test-integration)
+        print_info "Running Redis pub/sub integration tests..."
+        echo ""
+        if [ -f "tests/run_integration_tests.sh" ]; then
+            ./tests/run_integration_tests.sh "$@"
+        else
+            print_error "Integration test script not found. Please ensure tests/run_integration_tests.sh exists."
+            exit 1
+        fi
+        ;;
+    test-setup)
+        print_info "Setting up integration test environment..."
+        echo ""
+        if [ -f "tests/run_integration_tests.sh" ]; then
+            ./tests/run_integration_tests.sh --setup-only
+        else
+            print_error "Integration test script not found. Please ensure tests/run_integration_tests.sh exists."
+            exit 1
+        fi
+        ;;
+    test-cleanup)
+        print_info "Cleaning up integration test environment..."
+        echo ""
+        if [ -f "tests/run_integration_tests.sh" ]; then
+            ./tests/run_integration_tests.sh --cleanup
+        else
+            print_error "Integration test script not found. Please ensure tests/run_integration_tests.sh exists."
+            exit 1
+        fi
         ;;
     *)
         show_usage
