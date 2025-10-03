@@ -1,0 +1,678 @@
+name: Nightly Deployment Validation
+
+on:
+  schedule:
+    - cron: '0 1 * * *'  # 1:00 AM UTC daily
+  workflow_dispatch:
+    inputs:
+      skip_integration_tests:
+        description: 'Skip integration tests'
+        required: false
+        default: false
+        type: boolean
+      force_run:
+        description: 'Force run even if no recent commits'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  check-recent-commits:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.commit-check.outputs.should_run }}
+      commit_count: ${{ steps.commit-check.outputs.commit_count }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 50  # Fetch last 50 commits
+
+      - name: Check for recent commits
+        id: commit-check
+        run: |
+          # Check if there are commits in the last 24 hours
+          RECENT_COMMITS=$(git log --since="24 hours ago" --oneline | wc -l)
+          echo "commit_count=$RECENT_COMMITS" >> $GITHUB_OUTPUT
+
+          if [ "${{ github.event.inputs.force_run }}" = "true" ] || [ "$RECENT_COMMITS" -gt 0 ]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "✅ Will run nightly validation (Recent commits: $RECENT_COMMITS)"
+          else
+            echo "should_run=false" >> $GITHUB_OUTPUT
+            echo "⏭️ Skipping nightly validation (No recent commits)"
+          fi
+
+  validate-configurations:
+    runs-on: ubuntu-latest
+    needs: check-recent-commits
+    if: needs.check-recent-commits.outputs.should_run == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose syntax
+        run: |
+          echo "🔍 Validating Docker Compose configuration..."
+          docker-compose -f docker-compose.yml config --quiet
+          echo "✅ Docker Compose syntax is valid"
+
+      - name: Validate YAML configuration files
+        run: |
+          echo "🔍 Validating YAML configuration files..."
+
+          # Install yamllint
+          pip install yamllint
+
+          # Validate fogis-config.yaml
+          if [ -f "fogis-config.yaml" ]; then
+            echo "Validating fogis-config.yaml..."
+            yamllint -d relaxed fogis-config.yaml || echo "⚠️ YAML linting warnings (non-blocking)"
+            python -c "import yaml; yaml.safe_load(open('fogis-config.yaml'))" && echo "✅ fogis-config.yaml is valid YAML"
+          fi
+
+          # Validate other YAML files
+          find . -name "*.yml" -o -name "*.yaml" | while read file; do
+            echo "Validating $file..."
+            python -c "import yaml; yaml.safe_load(open('$file'))" || echo "⚠️ Warning: $file may have issues"
+          done
+
+          echo "✅ YAML validation complete"
+
+      - name: Validate environment variables
+        run: |
+          echo "🔍 Validating environment configuration..."
+
+          # Check if .env file exists (it should for deployment)
+          if [ ! -f ".env" ]; then
+            echo "⚠️ Warning: .env file not found (expected in deployment)"
+          else
+            echo "✅ .env file exists"
+
+            # Check for required variables (without exposing values)
+            required_vars=("FOGIS_USERNAME" "FOGIS_PASSWORD")
+            for var in "${required_vars[@]}"; do
+              if grep -q "^${var}=" .env; then
+                echo "✅ $var is defined"
+              else
+                echo "⚠️ Warning: $var not found in .env"
+              fi
+            done
+          fi
+
+          echo "✅ Environment validation complete"
+
+      - name: Check for port conflicts
+        run: |
+          echo "🔍 Checking for port conflicts..."
+
+          # Extract port mappings from docker-compose.yml
+          ports=$(grep -E "^\s+- \"[0-9]+:" docker-compose.yml | sed 's/.*"\([0-9]*\):.*/\1/' | sort)
+
+          # Check for duplicates
+          duplicates=$(echo "$ports" | uniq -d)
+
+          if [ -n "$duplicates" ]; then
+            echo "❌ Port conflicts detected:"
+            echo "$duplicates"
+            exit 1
+          else
+            echo "✅ No port conflicts detected"
+          fi
+
+      - name: Validate volume mounts
+        run: |
+          echo "🔍 Validating volume mount paths..."
+
+          # Check that critical directories exist or can be created
+          dirs=("data" "logs" "credentials" "monitoring")
+          for dir in "${dirs[@]}"; do
+            if [ -d "$dir" ] || mkdir -p "$dir" 2>/dev/null; then
+              echo "✅ $dir directory is accessible"
+            else
+              echo "⚠️ Warning: Cannot access/create $dir"
+            fi
+          done
+
+          echo "✅ Volume validation complete"
+
+  check-docker-images:
+    runs-on: ubuntu-latest
+    needs: check-recent-commits
+    if: needs.check-recent-commits.outputs.should_run == 'true'
+    permissions:
+      contents: read
+      issues: write
+    outputs:
+      images_accessible: ${{ steps.check-images.outputs.images_accessible }}
+      updates_available: ${{ steps.check-updates.outputs.updates_available }}
+      update_issue_number: ${{ steps.create-update-issue.outputs.issue_number }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check Docker image availability
+        id: check-images
+        run: |
+          echo "🔍 Checking Docker image availability on GHCR..."
+
+          # Extract GHCR images from docker-compose.yml
+          images=$(grep "image: ghcr.io" docker-compose.yml | sed 's/.*image: //' | tr -d '"' | sort -u)
+
+          all_accessible=true
+
+          echo "## Docker Images Status" > image-report.md
+          echo "" >> image-report.md
+
+          for image in $images; do
+            echo "Checking $image..."
+
+            # Try to get image manifest (this checks if image exists and is accessible)
+            if docker manifest inspect "$image" > /dev/null 2>&1; then
+              echo "✅ $image is accessible"
+              echo "- ✅ \`$image\` - Accessible" >> image-report.md
+            else
+              echo "❌ $image is NOT accessible"
+              echo "- ❌ \`$image\` - **NOT ACCESSIBLE**" >> image-report.md
+              all_accessible=false
+            fi
+          done
+
+          if [ "$all_accessible" = true ]; then
+            echo "images_accessible=true" >> $GITHUB_OUTPUT
+            echo "✅ All Docker images are accessible"
+          else
+            echo "images_accessible=false" >> $GITHUB_OUTPUT
+            echo "❌ Some Docker images are not accessible"
+            exit 1
+          fi
+
+      - name: Check for image updates
+        id: check-updates
+        continue-on-error: true
+        run: |
+          echo "🔍 Checking for available Docker image updates..."
+
+          # Extract images with :latest tag
+          latest_images=$(grep "image: ghcr.io" docker-compose.yml | grep ":latest" | sed 's/.*image: //' | tr -d '"' | sort -u)
+
+          updates_found=false
+          update_details=""
+
+          echo "" >> image-report.md
+          echo "## Update Status" >> image-report.md
+          echo "" >> image-report.md
+
+          for image in $latest_images; do
+            echo "Checking for updates: $image..."
+
+            # Get current digest
+            current_digest=$(docker manifest inspect "$image" 2>/dev/null | jq -r '.manifests[0].digest' || echo "unknown")
+
+            if [ "$current_digest" != "unknown" ]; then
+              echo "- 📦 \`$image\`" >> image-report.md
+              echo "  - Current digest: \`${current_digest:0:20}...\`" >> image-report.md
+              echo "  - Status: Using latest version" >> image-report.md
+
+              # Note: With :latest tags, we're always on the latest
+              # Real update detection would require comparing with a previous run
+              # This is a placeholder for Phase 2 functionality
+            fi
+          done
+
+          # For now, we don't have a reliable way to detect updates with :latest tags
+          # This will be enhanced in Phase 2
+          echo "updates_available=false" >> $GITHUB_OUTPUT
+          echo "ℹ️ Update detection is informational only (Phase 2 will add automated testing)"
+
+      - name: Upload image report
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image-report
+          path: image-report.md
+          retention-days: 30
+
+      - name: Create update issue if needed
+        id: create-update-issue
+        if: steps.check-updates.outputs.updates_available == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('image-report.md', 'utf8');
+
+            const title = `🔄 Docker Image Updates Available - ${new Date().toISOString().split('T')[0]}`;
+            const body = `## Docker Image Updates Detected
+
+            The nightly deployment validation has detected that newer versions of Docker images may be available.
+
+            ${report}
+
+            ### Next Steps
+            1. Review the image update details above
+            2. Manually test the updates in a development environment
+            3. Update docker-compose.yml if updates are safe
+            4. Close this issue once updates are reviewed/applied
+
+            ### Phase 2 Enhancement
+            In Phase 2, automated testing of new image versions will be implemented. See issue #78 for details.
+
+            ---
+            **Workflow Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            **Date:** ${new Date().toISOString()}
+            `;
+
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['docker', 'updates-available', 'automated']
+            });
+
+            core.setOutput('issue_number', issue.data.number);
+            console.log(`Created issue #${issue.data.number}`);
+
+  security-scanning:
+    runs-on: ubuntu-latest
+    needs: check-recent-commits
+    if: needs.check-recent-commits.outputs.should_run == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Scan Docker Compose for security issues
+        run: |
+          echo "🔍 Scanning Docker Compose for security misconfigurations..."
+
+          # Check for privileged containers
+          if docker-compose -f docker-compose.yml config | grep -q "privileged: true"; then
+            echo "⚠️ Warning: Privileged containers detected"
+          else
+            echo "✅ No privileged containers"
+          fi
+
+          # Check for host network mode
+          if docker-compose -f docker-compose.yml config | grep -q "network_mode: host"; then
+            echo "⚠️ Warning: Host network mode detected"
+          else
+            echo "✅ No host network mode usage"
+          fi
+
+          echo "✅ Docker Compose security scan complete"
+
+      - name: Check for exposed secrets
+        run: |
+          echo "🔍 Checking for exposed secrets..."
+
+          # Verify .env is in .gitignore
+          if grep -q "^\.env$" .gitignore; then
+            echo "✅ .env is properly ignored"
+          else
+            echo "⚠️ Warning: .env should be in .gitignore"
+          fi
+
+          # Check for hardcoded secrets in docker-compose.yml
+          if grep -iE "(password|secret|key|token).*:" docker-compose.yml | grep -v "GOOGLE_CREDENTIALS_PATH" | grep -v "TOKEN_PATH" | grep -v "_ENABLED" | grep -v "WEBHOOK_AUTH_TOKEN"; then
+            echo "⚠️ Potential hardcoded secrets found (review manually)"
+          else
+            echo "✅ No obvious hardcoded secrets detected"
+          fi
+
+          echo "✅ Secret exposure check complete"
+
+      - name: Scan Python dependencies
+        continue-on-error: true
+        run: |
+          echo "🔍 Scanning Python dependencies for vulnerabilities..."
+
+          if [ -f "requirements.txt" ]; then
+            pip install safety pip-audit
+
+            echo "Running safety check..."
+            safety check -r requirements.txt --json --output safety-results.json || echo "⚠️ Safety check found issues (non-blocking)"
+
+            echo "Running pip-audit..."
+            pip-audit -r requirements.txt --format json --output pip-audit-results.json || echo "⚠️ Pip-audit found issues (non-blocking)"
+
+            echo "✅ Dependency scanning complete"
+          else
+            echo "ℹ️ No requirements.txt found, skipping dependency scan"
+          fi
+
+      - name: Upload security scan results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-results
+          path: |
+            safety-results.json
+            pip-audit-results.json
+          retention-days: 30
+          if-no-files-found: ignore
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: [check-recent-commits, validate-configurations]
+    if: needs.check-recent-commits.outputs.should_run == 'true' && github.event.inputs.skip_integration_tests != 'true'
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install test dependencies
+        run: |
+          echo "📦 Installing integration test dependencies..."
+          python -m pip install --upgrade pip
+          pip install -r tests/integration/requirements.txt
+          echo "✅ Dependencies installed"
+
+      - name: Run integration tests
+        id: run-tests
+        run: |
+          echo "🧪 Running integration test suite..."
+          cd tests
+          bash run_integration_tests.sh --cleanup --timeout 600
+          echo "✅ Integration tests completed"
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-reports
+          path: |
+            tests/integration/test-reports/
+            tests/integration/test-output/
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Upload test logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-logs
+          path: |
+            tests/integration/*.log
+            tests/integration/test-output/
+          retention-days: 30
+          if-no-files-found: ignore
+
+  deployment-smoke-test:
+    runs-on: ubuntu-latest
+    needs: [check-recent-commits, validate-configurations]
+    if: needs.check-recent-commits.outputs.should_run == 'true'
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create minimal .env for testing
+        run: |
+          echo "Creating minimal .env for smoke test..."
+          cat > .env << 'EOF'
+          FOGIS_USERNAME=test_user
+          FOGIS_PASSWORD=test_password
+          DEBUG_MODE=1
+          LOG_LEVEL=INFO
+          REDIS_ENABLED=true
+          NOTIFICATIONS_ENABLED=false
+          EMAIL_ENABLED=false
+          DISCORD_ENABLED=false
+          WEBHOOK_ENABLED=false
+          EOF
+
+      - name: Start core services
+        run: |
+          echo "🚀 Starting core services for smoke test..."
+          docker-compose up -d redis
+          echo "✅ Redis started"
+
+      - name: Wait for Redis health
+        run: |
+          echo "⏳ Waiting for Redis to be healthy..."
+          timeout 60 bash -c 'until docker exec $(docker ps -qf "name=redis") redis-cli ping 2>/dev/null | grep -q PONG; do sleep 2; done'
+          echo "✅ Redis is healthy"
+
+      - name: Test Redis connectivity
+        run: |
+          echo "🔍 Testing Redis connectivity..."
+          docker exec $(docker ps -qf "name=redis") redis-cli ping
+          docker exec $(docker ps -qf "name=redis") redis-cli SET test_key "deployment_validation"
+          docker exec $(docker ps -qf "name=redis") redis-cli GET test_key
+          echo "✅ Redis connectivity verified"
+
+      - name: Check Docker network
+        run: |
+          echo "🔍 Checking Docker network configuration..."
+          docker network ls | grep fogis || echo "⚠️ FOGIS network not created yet (expected in smoke test)"
+          echo "✅ Network check complete"
+
+      - name: Verify service configurations
+        run: |
+          echo "🔍 Verifying service configurations..."
+          docker-compose config --services
+          echo "✅ Service configurations verified"
+
+      - name: Cleanup smoke test
+        if: always()
+        run: |
+          echo "🧹 Cleaning up smoke test environment..."
+          docker-compose down --volumes --remove-orphans
+          echo "✅ Cleanup complete"
+
+  create-issue-on-failure:
+    runs-on: ubuntu-latest
+    needs: [check-recent-commits, validate-configurations, check-docker-images, security-scanning, integration-tests, deployment-smoke-test]
+    if: always() && needs.check-recent-commits.outputs.should_run == 'true' && (needs.validate-configurations.result == 'failure' || needs.check-docker-images.result == 'failure' || needs.security-scanning.result == 'failure' || needs.integration-tests.result == 'failure' || needs.deployment-smoke-test.result == 'failure')
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Create failure issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `🚨 Nightly Deployment Validation Failed - ${new Date().toISOString().split('T')[0]}`;
+
+            // Determine which jobs failed
+            const jobs = {
+              'Configuration Validation': '${{ needs.validate-configurations.result }}',
+              'Docker Images Check': '${{ needs.check-docker-images.result }}',
+              'Security Scanning': '${{ needs.security-scanning.result }}',
+              'Integration Tests': '${{ needs.integration-tests.result }}',
+              'Deployment Smoke Test': '${{ needs.deployment-smoke-test.result }}'
+            };
+
+            let failedJobs = [];
+            let jobsTable = '| Job | Status |\n|-----|--------|\n';
+
+            for (const [job, result] of Object.entries(jobs)) {
+              const emoji = result === 'success' ? '✅' : result === 'failure' ? '❌' : '⏭️';
+              jobsTable += `| ${job} | ${emoji} ${result} |\n`;
+              if (result === 'failure') {
+                failedJobs.push(job);
+              }
+            }
+
+            const body = `## 🌙 Nightly Deployment Validation Failure Report
+
+            **Date:** ${new Date().toISOString()}
+            **Workflow:** Nightly Deployment Validation
+            **Status:** ❌ Failed
+            **Recent Commits:** ${{ needs.check-recent-commits.outputs.commit_count }}
+
+            ### 📋 Job Results
+
+            ${jobsTable}
+
+            ### ❌ Failed Jobs
+
+            ${failedJobs.map(job => `- **${job}**`).join('\n')}
+
+            ### 🔍 Investigation Required
+
+            1. Review the workflow run logs for detailed error messages
+            2. Check the uploaded artifacts for test reports and security scans
+            3. Verify that all services and configurations are correct
+            4. Address any issues found and re-run the workflow
+
+            ### 📊 Workflow Details
+
+            - **Run ID:** ${{ github.run_id }}
+            - **Run URL:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            - **Triggered by:** ${{ github.event_name }}
+            - **Branch:** ${{ github.ref_name }}
+            - **Commit:** ${{ github.sha }}
+
+            ### 📦 Artifacts
+
+            Check the workflow run for uploaded artifacts:
+            - Docker image reports
+            - Security scan results
+            - Integration test reports
+            - Test logs (if tests failed)
+
+            ### 🏷️ Labels
+
+            This issue was automatically created by the nightly deployment validation workflow.
+            `;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['bug', 'nightly-failure', 'automated', 'deployment']
+            });
+
+  nightly-summary:
+    runs-on: ubuntu-latest
+    needs: [check-recent-commits, validate-configurations, check-docker-images, security-scanning, integration-tests, deployment-smoke-test]
+    if: always()
+    permissions:
+      contents: read
+
+    steps:
+      - name: Generate nightly summary
+        run: |
+          echo "## 🌙 Nightly Deployment Validation Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "**Workflow:** Nightly Deployment Validation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "### 📊 Execution Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Should Run:** ${{ needs.check-recent-commits.outputs.should_run }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Recent Commits:** ${{ needs.check-recent-commits.outputs.commit_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.check-recent-commits.outputs.should_run }}" = "true" ]; then
+            echo "### 🔍 Job Results" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+            echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+
+            # Configuration Validation
+            status="${{ needs.validate-configurations.result }}"
+            emoji="❓"
+            [ "$status" = "success" ] && emoji="✅"
+            [ "$status" = "failure" ] && emoji="❌"
+            [ "$status" = "skipped" ] && emoji="⏭️"
+            echo "| Configuration Validation | $emoji $status |" >> $GITHUB_STEP_SUMMARY
+
+            # Docker Images Check
+            status="${{ needs.check-docker-images.result }}"
+            emoji="❓"
+            [ "$status" = "success" ] && emoji="✅"
+            [ "$status" = "failure" ] && emoji="❌"
+            [ "$status" = "skipped" ] && emoji="⏭️"
+            echo "| Docker Images Check | $emoji $status |" >> $GITHUB_STEP_SUMMARY
+
+            # Security Scanning
+            status="${{ needs.security-scanning.result }}"
+            emoji="❓"
+            [ "$status" = "success" ] && emoji="✅"
+            [ "$status" = "failure" ] && emoji="❌"
+            [ "$status" = "skipped" ] && emoji="⏭️"
+            echo "| Security Scanning | $emoji $status |" >> $GITHUB_STEP_SUMMARY
+
+            # Integration Tests
+            status="${{ needs.integration-tests.result }}"
+            emoji="❓"
+            [ "$status" = "success" ] && emoji="✅"
+            [ "$status" = "failure" ] && emoji="❌"
+            [ "$status" = "skipped" ] && emoji="⏭️"
+            echo "| Integration Tests | $emoji $status |" >> $GITHUB_STEP_SUMMARY
+
+            # Deployment Smoke Test
+            status="${{ needs.deployment-smoke-test.result }}"
+            emoji="❓"
+            [ "$status" = "success" ] && emoji="✅"
+            [ "$status" = "failure" ] && emoji="❌"
+            [ "$status" = "skipped" ] && emoji="⏭️"
+            echo "| Deployment Smoke Test | $emoji $status |" >> $GITHUB_STEP_SUMMARY
+
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            # Overall status
+            if [ "${{ needs.validate-configurations.result }}" = "success" ] && \
+               [ "${{ needs.check-docker-images.result }}" = "success" ] && \
+               [ "${{ needs.security-scanning.result }}" = "success" ] && \
+               [ "${{ needs.integration-tests.result }}" = "success" ] && \
+               [ "${{ needs.deployment-smoke-test.result }}" = "success" ]; then
+              echo "### ✅ Overall Status: All Validations Passed" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "### ❌ Overall Status: Some Validations Failed" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "**Action Required:** Review failed jobs and address issues" >> $GITHUB_STEP_SUMMARY
+              echo "**Issue Created:** A GitHub issue has been automatically created for tracking" >> $GITHUB_STEP_SUMMARY
+            fi
+
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 📦 Artifacts" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- Docker image reports" >> $GITHUB_STEP_SUMMARY
+            echo "- Security scan results" >> $GITHUB_STEP_SUMMARY
+            echo "- Integration test reports" >> $GITHUB_STEP_SUMMARY
+
+            # Docker image updates
+            if [ "${{ needs.check-docker-images.outputs.updates_available }}" = "true" ]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "### 🔄 Docker Image Updates" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "**Status:** Updates available" >> $GITHUB_STEP_SUMMARY
+              echo "**Issue:** #${{ needs.check-docker-images.outputs.update_issue_number }}" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "ℹ️ Phase 2 will add automated testing of new image versions. See issue #78 for details." >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "### ⏭️ Overall Status: Skipped (No Recent Commits)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The nightly validation was skipped because there were no commits in the last 24 hours." >> $GITHUB_STEP_SUMMARY
+            echo "Use the 'force_run' option to run validation manually." >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "*Generated by Nightly Deployment Validation workflow*" >> $GITHUB_STEP_SUMMARY
