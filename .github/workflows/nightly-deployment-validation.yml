@@ -241,7 +241,7 @@ jobs:
       - name: Create update issue if needed
         id: create-update-issue
         if: steps.check-updates.outputs.updates_available == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const fs = require('fs');
@@ -489,7 +489,7 @@ jobs:
 
     steps:
       - name: Create failure issue
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const title = `🚨 Nightly Deployment Validation Failed - ${new Date().toISOString().split('T')[0]}`;
