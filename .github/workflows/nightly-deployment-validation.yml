@@ -162,8 +162,8 @@ jobs:
         run: |
           echo "🔍 Checking Docker image availability on GHCR..."
 
-          # Extract GHCR images from docker-compose.yml
-          images=$(grep "image: ghcr.io" docker-compose.yml | sed 's/.*image: //' | tr -d '"' | sort -u)
+          # Extract GHCR images from docker-compose.yml (excluding commented lines)
+          images=$(grep "image: ghcr.io" docker-compose.yml | grep -v "^[[:space:]]*#" | sed 's/.*image: //' | tr -d '"' | sort -u)
 
           all_accessible=true
 
@@ -199,8 +199,8 @@ jobs:
         run: |
           echo "🔍 Checking for available Docker image updates..."
 
-          # Extract images with :latest tag
-          latest_images=$(grep "image: ghcr.io" docker-compose.yml | grep ":latest" | sed 's/.*image: //' | tr -d '"' | sort -u)
+          # Extract images with :latest tag (excluding commented lines)
+          latest_images=$(grep "image: ghcr.io" docker-compose.yml | grep -v "^[[:space:]]*#" | grep ":latest" | sed 's/.*image: //' | tr -d '"' | sort -u)
 
           updates_found=false
           update_details=""

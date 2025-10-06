@@ -16,9 +16,9 @@ metadata:
 # FOGIS Authentication (REQUIRED)
 # These credentials are used to authenticate with the FOGIS system
 fogis:
-  username: ""           # Your FOGIS login username (e.g., "Bartek Svaberg")
-  password: ""           # Your FOGIS login password
-  referee_number: 0      # Your referee number from FOGIS profile (e.g., 61318)
+  username: "PLACEHOLDER_USERNAME"           # Your FOGIS login username (e.g., "Bartek Svaberg")
+  password: "PLACEHOLDER_PASSWORD"           # Your FOGIS login password
+  referee_number: 12345      # Your referee number from FOGIS profile (e.g., 61318)
 
 # Google Integration Configuration (REQUIRED)
 google:
