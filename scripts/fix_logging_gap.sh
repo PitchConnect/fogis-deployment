@@ -21,7 +21,7 @@ FIX="🔧"
 print_status() {
     local level=$1
     local message=$2
-    
+
     case $level in
         "SUCCESS") echo -e "${GREEN}${SUCCESS} ${message}${NC}" ;;
         "ERROR") echo -e "${RED}${ERROR} ${message}${NC}" ;;
@@ -42,21 +42,21 @@ print_header() {
 
 backup_configs() {
     print_status "FIX" "Creating backup of current configurations..."
-    
+
     local backup_dir="./backups/logging-fix-$(date +%Y%m%d-%H%M%S)"
     mkdir -p "$backup_dir"
-    
+
     # Backup configuration files
     cp docker-compose.yml "$backup_dir/" 2>/dev/null || true
     cp monitoring/loki-config.yaml "$backup_dir/" 2>/dev/null || true
     cp monitoring/promtail-config.yaml "$backup_dir/" 2>/dev/null || true
-    
+
     print_status "SUCCESS" "Backup created at $backup_dir"
 }
 
 fix_timezone_configuration() {
     print_status "FIX" "Fixing timezone configuration..."
-    
+
     # Create a temporary docker-compose override for timezone
     cat > docker-compose.timezone.yml << 'EOF'
 version: '3.8'
@@ -65,28 +65,28 @@ services:
   loki:
     environment:
       - TZ=Europe/Stockholm
-      
+
   promtail:
     environment:
       - TZ=Europe/Stockholm
-      
+
   grafana:
     environment:
       - TZ=Europe/Stockholm
       - GF_DATE_FORMATS_DEFAULT_TIMEZONE=Europe/Stockholm
-      
+
   process-matches-service:
     environment:
       - TZ=Europe/Stockholm
-      
+
   fogis-calendar-phonebook-sync:
     environment:
       - TZ=Europe/Stockholm
-      
+
   team-logo-combiner:
     environment:
       - TZ=Europe/Stockholm
-      
+
   google-drive-service:
     environment:
       - TZ=Europe/Stockholm
@@ -98,7 +98,7 @@ EOF
 
 fix_loki_configuration() {
     print_status "FIX" "Optimizing Loki configuration for gap prevention..."
-    
+
     # Create an improved Loki configuration
     cat > monitoring/loki-config-improved.yaml << 'EOF'
 auth_enabled: false
@@ -200,7 +200,7 @@ EOF
 
 fix_promtail_configuration() {
     print_status "FIX" "Enhancing Promtail configuration for better log collection..."
-    
+
     # Create an improved Promtail configuration
     cat > monitoring/promtail-config-improved.yaml << 'EOF'
 server:
@@ -234,7 +234,7 @@ scrape_configs:
             values: ["com.docker.compose.project=fogis-deployment"]
     relabel_configs:
       - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
-        regex: '(fogis-.*|match-list-.*|process-matches-service|team-logo-combiner|google-drive-service|loki|grafana|promtail|fogis-event-collector)'
+        regex: '(fogis-.*|match-list-.*|process-matches-service|team-logo-combiner|google-drive-service|loki|grafana|promtail)'
         target_label: __tmp_docker_service
       - source_labels: ['__tmp_docker_service']
         regex: '(.+)'
@@ -261,7 +261,7 @@ scrape_configs:
             - '2006-01-02T15:04:05,000'
           # Enhanced timezone handling
           location: 'Europe/Stockholm'
-      
+
       # Add diagnostic labels for gap analysis
       - match:
           selector: '{service_name=~".*"}'
@@ -271,7 +271,7 @@ scrape_configs:
             - labels:
                 log_processed_at: '{{ .timestamp }}'
                 gap_analysis: 'enabled'
-      
+
       # OAuth Authentication Events
       - match:
           selector: '{service_name=~"fogis-calendar-.*|google-drive-.*"}'
@@ -280,7 +280,7 @@ scrape_configs:
                 expression: '.*(?P<oauth_indicator>OAuth|authentication|token|credential).*'
             - labels:
                 oauth_event: "true"
-      
+
       # Service Health Events
       - match:
           selector: '{service_name=~".*"}'
@@ -289,7 +289,7 @@ scrape_configs:
                 expression: '.*(?P<health_status>healthy|unhealthy|starting|stopping|degraded).*'
             - labels:
                 health_status:
-      
+
       # Match Processing Events
       - match:
           selector: '{service_name=~"match-list-.*|process-matches-service"}'
@@ -298,7 +298,7 @@ scrape_configs:
                 expression: '.*(?P<match_event>new matches|changes detected|processing complete|match.*uploaded|calendar.*sync).*'
             - labels:
                 match_event: "true"
-      
+
       # Error and Exception Tracking
       - match:
           selector: '{level=~"ERROR|CRITICAL|FATAL"}'
@@ -354,7 +354,7 @@ EOF
 
 create_monitoring_script() {
     print_status "FIX" "Creating continuous monitoring script..."
-    
+
     cat > scripts/monitor_logging_gaps.sh << 'EOF'
 #!/bin/bash
 
@@ -373,14 +373,14 @@ check_recent_logs() {
     local one_hour_ago=$((current_time - 3600))
     local start_time=$(date -d "@$one_hour_ago" -Iseconds)
     local end_time=$(date -d "@$current_time" -Iseconds)
-    
+
     local query='{service_name=~"fogis-.*|match-list-.*|process-matches-service"}'
     local response=$(curl -s -G "http://localhost:3100/loki/api/v1/query_range" \
         --data-urlencode "query=$query" \
         --data-urlencode "start=$start_time" \
         --data-urlencode "end=$end_time" \
         --data-urlencode "limit=1")
-    
+
     if echo "$response" | jq -e '.data.result | length' >/dev/null 2>&1; then
         local result_count=$(echo "$response" | jq '.data.result | length')
         if [ "$result_count" -gt 0 ]; then
@@ -401,7 +401,7 @@ EOF
 
     chmod +x scripts/monitor_logging_gaps.sh
     print_status "SUCCESS" "Created monitoring script: scripts/monitor_logging_gaps.sh"
-    
+
     # Create cron job suggestion
     cat > scripts/setup_gap_monitoring_cron.sh << 'EOF'
 #!/bin/bash
@@ -423,7 +423,7 @@ EOF
 
 apply_fixes() {
     print_status "FIX" "Applying logging gap fixes..."
-    
+
     echo
     read -p "Apply timezone fixes? (y/N): " apply_timezone
     if [[ $apply_timezone =~ ^[Yy]$ ]]; then
@@ -431,7 +431,7 @@ apply_fixes() {
         docker-compose -f docker-compose.yml -f docker-compose.timezone.yml up -d
         print_status "SUCCESS" "Timezone fixes applied"
     fi
-    
+
     echo
     read -p "Apply improved Loki configuration? (y/N): " apply_loki
     if [[ $apply_loki =~ ^[Yy]$ ]]; then
@@ -440,7 +440,7 @@ apply_fixes() {
         docker-compose restart loki
         print_status "SUCCESS" "Loki configuration updated"
     fi
-    
+
     echo
     read -p "Apply improved Promtail configuration? (y/N): " apply_promtail
     if [[ $apply_promtail =~ ^[Yy]$ ]]; then
@@ -449,7 +449,7 @@ apply_fixes() {
         docker-compose restart promtail
         print_status "SUCCESS" "Promtail configuration updated"
     fi
-    
+
     echo
     read -p "Setup continuous gap monitoring? (y/N): " setup_monitoring
     if [[ $setup_monitoring =~ ^[Yy]$ ]]; then
@@ -461,7 +461,7 @@ apply_fixes() {
 
 print_next_steps() {
     print_status "INFO" "Next steps after applying fixes:"
-    
+
     echo
     echo "1. 🔍 **Monitor the fixes**:"
     echo "   ./scripts/diagnose_logging_gap.sh"
@@ -488,21 +488,21 @@ print_next_steps() {
 
 main() {
     print_header
-    
+
     cd "$(dirname "$0")/.."
-    
+
     print_status "INFO" "Starting logging gap fix process..."
     print_status "INFO" "Current directory: $(pwd)"
-    
+
     backup_configs
     fix_timezone_configuration
     fix_loki_configuration
     fix_promtail_configuration
     create_monitoring_script
-    
+
     echo
     print_status "SUCCESS" "All fix configurations prepared!"
-    
+
     apply_fixes
     print_next_steps
 }

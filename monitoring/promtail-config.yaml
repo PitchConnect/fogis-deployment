@@ -19,7 +19,7 @@ scrape_configs:
             values: ["com.docker.compose.project=fogis-deployment"]
     relabel_configs:
       - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
-        regex: '(fogis-.*|match-list-.*|team-logo-.*|google-drive-.*|loki|grafana|promtail|fogis-event-collector)'
+        regex: '(fogis-.*|match-list-.*|team-logo-.*|google-drive-.*|loki|grafana|promtail)'
         target_label: __tmp_docker_service
       - source_labels: ['__tmp_docker_service']
         regex: '(.+)'
@@ -42,7 +42,7 @@ scrape_configs:
           fallback_formats:
             - '2006-01-02T15:04:05.000Z'
             - '2006-01-02T15:04:05.000'
-      
+
       # OAuth Authentication Events
       - match:
           selector: '{service_name=~"fogis-calendar-.*|google-drive-.*"}'
@@ -56,7 +56,7 @@ scrape_configs:
                 stages:
                   - labels:
                       oauth_status_event: "true"
-      
+
       # Service Health Events
       - match:
           selector: '{service_name=~".*"}'
@@ -65,7 +65,7 @@ scrape_configs:
                 expression: '.*(?P<health_status>healthy|unhealthy|starting|stopping|degraded).*'
             - labels:
                 health_status:
-      
+
       # Match Processing Events
       - match:
           selector: '{service_name=~"match-list-.*"}'
@@ -78,7 +78,7 @@ scrape_configs:
                 expression: '.*(?P<match_count>\d+)\s*(matches?|changes?).*'
             - labels:
                 match_count:
-      
+
       # Error and Exception Tracking
       - match:
           selector: '{level=~"ERROR|CRITICAL|FATAL"}'
@@ -88,7 +88,7 @@ scrape_configs:
             - labels:
                 error_event: "true"
                 error_type:
-      
+
       # Performance Metrics
       - match:
           selector: '{service_name=~".*"}'
