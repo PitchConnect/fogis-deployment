@@ -59,7 +59,7 @@ jobs:
       - name: Validate Docker Compose syntax
         run: |
           echo "🔍 Validating Docker Compose configuration..."
-          docker-compose -f docker-compose.yml config --quiet
+          docker compose -f docker-compose.yml config --quiet
           echo "✅ Docker Compose syntax is valid"
 
       - name: Validate YAML configuration files
@@ -298,14 +298,14 @@ jobs:
           echo "🔍 Scanning Docker Compose for security misconfigurations..."
 
           # Check for privileged containers
-          if docker-compose -f docker-compose.yml config | grep -q "privileged: true"; then
+          if docker compose -f docker-compose.yml config | grep -q "privileged: true"; then
             echo "⚠️ Warning: Privileged containers detected"
           else
             echo "✅ No privileged containers"
           fi
 
           # Check for host network mode
-          if docker-compose -f docker-compose.yml config | grep -q "network_mode: host"; then
+          if docker compose -f docker-compose.yml config | grep -q "network_mode: host"; then
             echo "⚠️ Warning: Host network mode detected"
           else
             echo "✅ No host network mode usage"
@@ -443,7 +443,7 @@ jobs:
       - name: Start core services
         run: |
           echo "🚀 Starting core services for smoke test..."
-          docker-compose up -d redis
+          docker compose up -d redis
           echo "✅ Redis started"
 
       - name: Wait for Redis health
@@ -469,14 +469,14 @@ jobs:
       - name: Verify service configurations
         run: |
           echo "🔍 Verifying service configurations..."
-          docker-compose config --services
+          docker compose config --services
           echo "✅ Service configurations verified"
 
       - name: Cleanup smoke test
         if: always()
         run: |
           echo "🧹 Cleaning up smoke test environment..."
-          docker-compose down --volumes --remove-orphans
+          docker compose down --volumes --remove-orphans
           echo "✅ Cleanup complete"
 
   create-issue-on-failure:
