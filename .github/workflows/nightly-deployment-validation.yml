@@ -59,6 +59,26 @@ jobs:
       - name: Validate Docker Compose syntax
         run: |
           echo "🔍 Validating Docker Compose configuration..."
+
+          # Create a minimal .env file for validation (docker-compose.yml requires it)
+          # This file is not committed to the repository (it's in .gitignore)
+          cat > .env << 'EOF'
+          # Minimal .env file for CI validation
+          FOGIS_USERNAME=ci_test_user
+          FOGIS_PASSWORD=ci_test_password
+          NOTIFICATIONS_ENABLED=false
+          EMAIL_ENABLED=false
+          SMTP_HOST=smtp.example.com
+          SMTP_PORT=587
+          SMTP_USERNAME=test@example.com
+          SMTP_PASSWORD=test_password
+          SMTP_FROM=noreply@example.com
+          SMTP_USE_TLS=true
+          DISCORD_ENABLED=false
+          DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/test
+          DISCORD_BOT_USERNAME=FOGIS Bot
+          EOF
+
           docker compose -f docker-compose.yml config --quiet
           echo "✅ Docker Compose syntax is valid"
 
@@ -296,6 +316,23 @@ jobs:
       - name: Scan Docker Compose for security issues
         run: |
           echo "🔍 Scanning Docker Compose for security misconfigurations..."
+
+          # Create a minimal .env file for validation (docker-compose.yml requires it)
+          cat > .env << 'EOF'
+          FOGIS_USERNAME=ci_test_user
+          FOGIS_PASSWORD=ci_test_password
+          NOTIFICATIONS_ENABLED=false
+          EMAIL_ENABLED=false
+          SMTP_HOST=smtp.example.com
+          SMTP_PORT=587
+          SMTP_USERNAME=test@example.com
+          SMTP_PASSWORD=test_password
+          SMTP_FROM=noreply@example.com
+          SMTP_USE_TLS=true
+          DISCORD_ENABLED=false
+          DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/test
+          DISCORD_BOT_USERNAME=FOGIS Bot
+          EOF
 
           # Check for privileged containers
           if docker compose -f docker-compose.yml config | grep -q "privileged: true"; then
