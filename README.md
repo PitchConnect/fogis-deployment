@@ -85,6 +85,24 @@ This deployment now uses **official published container images** from GitHub Con
 - **✅ google-drive-service**: `ghcr.io/pitchconnect/google-drive-service:latest`
 - **✅ All other services**: Official GHCR images
 
+### **🎯 ARM64 Support (Apple Silicon, AWS Graviton, Raspberry Pi)**
+
+**Status**: ✅ **4/5 services ready for ARM64 deployment**
+
+All FOGIS services now support **multi-platform deployment** with native ARM64 images:
+
+| Service | ARM64 Status | Platforms |
+|---------|--------------|-----------|
+| fogis-api-client-python | ✅ Ready | AMD64, ARM64 |
+| match-list-processor | ✅ Ready | AMD64, ARM64 |
+| team-logo-combiner | ✅ Ready | AMD64, ARM64 |
+| google-drive-service | ✅ Ready | AMD64, ARM64 |
+| fogis-calendar-phonebook-sync | ⚠️ AMD64 only | AMD64 (emulated on ARM64) |
+
+**Note**: The fogis-calendar-phonebook-sync service currently runs via AMD64 emulation on ARM64 systems due to a workflow issue ([#132](https://github.com/PitchConnect/fogis-calendar-phonebook-sync/issues/132)). Performance impact is minimal as the service is primarily I/O-bound.
+
+**Deployment**: No changes required! The `docker-compose.yml` automatically pulls the correct architecture. See [ARM64_DEPLOYMENT_STATUS.md](ARM64_DEPLOYMENT_STATUS.md) for details.
+
 ### **Critical Fixes Included**
 
 The latest GHCR images include these production-ready fixes:
