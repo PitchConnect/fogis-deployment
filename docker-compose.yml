@@ -99,7 +99,6 @@ services:
   # Calendar and phonebook synchronization service
   fogis-calendar-phonebook-sync:
     image: ghcr.io/pitchconnect/fogis-calendar-phonebook-sync:latest
-    platform: linux/amd64  # Force AMD64 until ARM64 build is available (Issue #132)
     container_name: fogis-calendar-phonebook-sync
     <<: *env-file
     networks:
