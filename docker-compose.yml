@@ -124,6 +124,11 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_ENABLED=true
+      # Calendar sync configuration - use local match data from match-list-processor
+      # This prevents the calendar sync service from attempting to fetch match data
+      # from FOGIS directly, which would fail with authentication errors.
+      # Instead, it accepts pre-fetched match data from the match-list-processor service.
+      - USE_LOCAL_MATCH_DATA=true
     volumes:
       - ./data/fogis-calendar-phonebook-sync:/app/data
       - ./logs/fogis-calendar-phonebook-sync:/app/logs
