@@ -1,0 +1,24 @@
+--- a/fogis_calendar_sync.py
++++ b/fogis_calendar_sync.py
+@@ -203,7 +203,11 @@ def find_event_by_match_id(service, calendar_id, match_id):
+
+
+ def generate_calendar_hash(match):
+-    """Generates a hash for calendar-specific match data (excluding referee information)."""
++    """Generates a hash for calendar-specific match data (INCLUDING referee information).
++
++    FIXED: Now includes domaruppdraglista to detect referee changes.
++    This ensures that when referees are added, removed, or changed in FOGIS,
++    the calendar event is properly updated.
++    """
+     data = {
+         "lag1namn": match["lag1namn"],
+         "lag2namn": match["lag2namn"],
+@@ -211,6 +215,7 @@ def generate_calendar_hash(match):
+         "tid": match["tid"],
+         "tavlingnamn": match["tavlingnamn"],
+         "kontaktpersoner": match.get("kontaktpersoner", []),  # Handle missing key
++        "domaruppdraglista": match.get("domaruppdraglista", []),  # ✅ FIXED: Include referee data
+     }
+
+     data_string = json.dumps(data, sort_keys=True).encode("utf-8")
