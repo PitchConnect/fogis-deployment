@@ -60,9 +60,19 @@ services:
   # Processing settings
   processing:
     min_referees_for_whatsapp: 2        # Minimum referees required for WhatsApp group creation
-    match_check_schedule: "0 * * * *"   # Cron schedule for match checking (hourly)
     force_fresh_processing: true        # Force fresh processing on startup
-    service_interval: 300               # Service check interval in seconds
+
+    # ============================================================================
+    # DEPRECATED SCHEDULING SETTINGS (NOT USED IN DOCKER COMPOSE DEPLOYMENTS)
+    # ============================================================================
+    # The following settings are NOT used when running via docker-compose.yml
+    # Scheduling is configured via docker-compose.yml environment variables:
+    #   - SERVICE_INTERVAL: Controls processing frequency (default: 3600 seconds)
+    #
+    # These settings are kept for reference and non-Docker deployments only.
+    # ============================================================================
+    # match_check_schedule: "0 * * * *"   # DEPRECATED - Use SERVICE_INTERVAL in docker-compose.yml
+    # service_interval: 300               # DEPRECATED - Use SERVICE_INTERVAL in docker-compose.yml
 
   # Logging configuration
   logging:

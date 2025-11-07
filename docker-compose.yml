@@ -44,10 +44,37 @@ services:
     container_name: process-matches-service
     command: ["python", "-m", "src.app_unified"]  # Use unified processor mode
     environment:
+      # ============================================================================
+      # SCHEDULING CONFIGURATION (PRIMARY SOURCE OF TRUTH)
+      # ============================================================================
+      # SERVICE_INTERVAL: Time in seconds between processing cycles
+      #
+      # This is the PRIMARY configuration for scheduling in Docker deployments.
+      # Do NOT rely on fogis-config.yaml for scheduling - it is NOT used here.
+      #
+      # The service runs in a continuous loop:
+      #   1. Fetch matches from FOGIS API
+      #   2. Detect changes vs cached data
+      #   3. Publish updates to Redis (fogis:matches:updates channel)
+      #   4. Sleep for SERVICE_INTERVAL seconds
+      #   5. Repeat
+      #
+      # Recommended values:
+      #   - 1800  = 30 minutes (for testing/development)
+      #   - 3600  = 1 hour (PRODUCTION RECOMMENDED - current setting)
+      #   - 7200  = 2 hours (low-frequency updates)
+      #   - 14400 = 4 hours (minimal updates)
+      #
+      # Default if not set: 300 seconds (5 minutes) - NOT RECOMMENDED for production
+      # ============================================================================
+      - SERVICE_INTERVAL=${SERVICE_INTERVAL:-3600}
+
+      # ============================================================================
+      # PROCESSOR MODE CONFIGURATION
+      # ============================================================================
       - PROCESSOR_MODE=unified                    # Enable unified processor mode
       - RUN_MODE=service                         # Run as persistent service with periodic processing
       - ENABLE_CHANGE_CATEGORIZATION=true       # Enable enhanced change detection
-      - SERVICE_INTERVAL=3600                    # Processing interval (1 hour) between match checks
       - FOGIS_API_CLIENT_URL=http://fogis-api-client-service:8080
       - CALENDAR_SYNC_URL=http://fogis-calendar-phonebook-sync:5003/sync
       - LOGO_COMBINER_URL=http://team-logo-combiner:5000/combine
@@ -124,6 +151,11 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_ENABLED=true
+      # Calendar sync configuration - use local match data from match-list-processor
+      # This prevents the calendar sync service from attempting to fetch match data
+      # from FOGIS directly, which would fail with authentication errors.
+      # Instead, it accepts pre-fetched match data from the match-list-processor service.
+      - USE_LOCAL_MATCH_DATA=true
     volumes:
       - ./data/fogis-calendar-phonebook-sync:/app/data
       - ./logs/fogis-calendar-phonebook-sync:/app/logs
