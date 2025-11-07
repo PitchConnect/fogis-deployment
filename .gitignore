@@ -235,5 +235,8 @@ tools/
 stacks/
 pr_descriptions/
 tests/unit/
-tests/e2e/
+# Ignore test output and temporary files in tests/e2e/, but allow documentation
+tests/e2e/*
+!tests/e2e/*.md
+!tests/e2e/
 tests/integration/
