@@ -1,0 +1,127 @@
+Clean up repository: remove debug artifacts, migrate Loki, add infrastructure
+
+This comprehensive cleanup reorganizes the repository, removes temporary
+debugging artifacts, migrates Loki to Docker volumes, and adds production-ready
+infrastructure for automated deployments and testing.
+
+## Repository Cleanup (Step 1)
+
+### Files Deleted (61 total)
+- 13 Python debug/test scripts (force_sync_match_*.py, subscriber_fix_*.py, etc.)
+- 2 shell scripts (apply_subscriber_fix.sh, direct_force_sync.sh)
+- 6 configuration variants (ci_updated.yml, pyproject_*.toml, etc.)
+- 2 test images (enhanced_schema_logo_test.png, team_db_id_logo_test.png)
+- 35 investigation reports (temporary AI-generated debugging documents)
+- 3 additional documentation files (implementation guides, planning docs)
+
+### Files Organized (13 total)
+- Moved fix_calendar_sync.sh → scripts/diagnostics/calendar-sync-diagnostic.sh
+- Moved 8 permanent docs → docs/
+- Moved 3 architectural docs → docs/architecture/
+- Moved 1 operational doc → docs/operations/
+
+### Directories Created
+- scripts/diagnostics/ - Diagnostic and troubleshooting tools
+- docs/ - General documentation
+- docs/architecture/ - Architectural decision records
+- docs/operations/ - Operational guides and runbooks
+
+## Loki Docker Volume Migration (Step 2)
+
+### Changes
+- Migrated Loki data from ./monitoring/loki/ to Docker named volume
+- Updated docker-compose.yml to use fogis-loki-data volume
+- Cleaned up hundreds of Loki runtime files from repository
+- Updated .gitignore to prevent future tracking of Loki data
+
+### Benefits
+- Loki data no longer tracked by Git
+- Reduced repository size significantly
+- Proper data management for monitoring infrastructure
+- Easier backup and restore with Docker volumes
+
+## Infrastructure Files Added (Step 3)
+
+### GitHub Workflows
+- .github/workflows/auto-update-images.yml
+  * Automated container image update workflow
+  * Pulls and verifies new images from GHCR
+  * Runs smoke tests on new images
+  * Creates PRs to track image updates
+  * Production-ready with comprehensive error handling
+
+### Cloudflare Worker
+- cloudflare-worker/webhook-handler.js
+  * Webhook handler for GitHub package events
+  * Verifies webhook signatures (HMAC SHA-256)
+  * Triggers auto-update workflow via repository_dispatch
+  * Production-ready but not yet deployed
+- cloudflare-worker/wrangler.toml
+  * Worker configuration with environment separation
+  * Placeholder values for account ID and domain
+- cloudflare-worker/README.md
+  * Deployment instructions and documentation
+  * Architecture overview and troubleshooting guide
+
+### Test Infrastructure
+- tests/ - Complete integration test suite
+  * Redis pub/sub workflow tests
+  * Service health and connectivity tests
+  * Mock FOGIS API for isolated testing
+  * Docker Compose test environment
+  * Comprehensive README with usage examples
+  * CI/CD ready with JUnit XML output
+
+### Documentation
+- CLEANUP_GUIDE.md - Repository cleanup instructions
+- LOKI_MIGRATION_GUIDE.md - Loki Docker volume migration guide
+- REPOSITORY_CLEANUP_SUMMARY.md - Cleanup summary and overview
+- cleanup-repository.sh - Automated cleanup script
+
+## Configuration Updates
+
+### .gitignore
+- Added Loki monitoring data patterns
+- Added test artifacts and cache patterns
+- Prevents tracking of runtime data and build artifacts
+
+### docker-compose.yml
+- Updated Loki service to use named volume
+- Added fogis-loki-data volume definition
+- Maintains backward compatibility with existing services
+
+## Impact
+
+### Repository Health
+- Removed 61 temporary/debug files
+- Organized 13 documentation files
+- Clean separation of concerns
+- Improved discoverability of documentation
+
+### Infrastructure
+- Production-ready automation workflows
+- Comprehensive test suite for CI/CD
+- Webhook integration ready for deployment
+- Proper data management for monitoring
+
+### Maintainability
+- Clear documentation structure
+- Reusable diagnostic tools
+- Architectural decision records preserved
+- Test infrastructure for ongoing development
+
+## Verification
+
+All changes have been tested:
+- ✅ Cleanup script executed successfully
+- ✅ Loki migrated and verified working
+- ✅ Infrastructure files reviewed and validated
+- ✅ .gitignore patterns tested
+- ✅ Documentation complete and accurate
+
+## Next Steps
+
+1. Review and merge this commit
+2. Optional: Deploy Cloudflare Worker for automated webhooks
+3. Optional: Integrate tests into GitHub Actions CI/CD
+4. Monitor Loki for 24-48 hours to ensure stability
