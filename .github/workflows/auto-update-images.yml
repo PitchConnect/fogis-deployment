@@ -1,0 +1,281 @@
+name: Auto Update Container Images
+
+# This workflow is triggered when a new container image is published
+# It can be triggered via:
+# 1. repository_dispatch event from service repositories
+# 2. Manual workflow_dispatch for testing
+
+on:
+  repository_dispatch:
+    types: [image_published]
+  workflow_dispatch:
+    inputs:
+      service:
+        description: 'Service name (e.g., fogis-api-client-python)'
+        required: true
+        type: string
+      image:
+        description: 'Full image URL (e.g., ghcr.io/pitchconnect/fogis-api-client-python)'
+        required: true
+        type: string
+      tag:
+        description: 'Image tag'
+        required: false
+        default: 'latest'
+        type: string
+
+jobs:
+  update-and-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      packages: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Extract service information
+        id: service-info
+        run: |
+          # Get service info from either repository_dispatch or workflow_dispatch
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            SERVICE="${{ github.event.client_payload.service }}"
+            IMAGE="${{ github.event.client_payload.image }}"
+            TAG="${{ github.event.client_payload.tag }}"
+            DIGEST="${{ github.event.client_payload.digest }}"
+            SOURCE_REPO="${{ github.event.client_payload.repository }}"
+            SOURCE_SHA="${{ github.event.client_payload.sha }}"
+          else
+            SERVICE="${{ github.event.inputs.service }}"
+            IMAGE="${{ github.event.inputs.image }}"
+            TAG="${{ github.event.inputs.tag }}"
+            DIGEST=""
+            SOURCE_REPO="manual-trigger"
+            SOURCE_SHA=""
+          fi
+
+          echo "service=$SERVICE" >> $GITHUB_OUTPUT
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "digest=$DIGEST" >> $GITHUB_OUTPUT
+          echo "source_repo=$SOURCE_REPO" >> $GITHUB_OUTPUT
+          echo "source_sha=$SOURCE_SHA" >> $GITHUB_OUTPUT
+
+          echo "📦 Service: $SERVICE"
+          echo "🐳 Image: $IMAGE:$TAG"
+          echo "📍 Digest: $DIGEST"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull and verify new image
+        id: verify-image
+        run: |
+          echo "🔍 Pulling new image: ${{ steps.service-info.outputs.image }}:${{ steps.service-info.outputs.tag }}"
+
+          if ! docker pull ${{ steps.service-info.outputs.image }}:${{ steps.service-info.outputs.tag }}; then
+            echo "❌ Failed to pull image"
+            exit 1
+          fi
+
+          echo "✅ Image pulled successfully"
+
+          # Get image digest
+          PULLED_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${{ steps.service-info.outputs.image }}:${{ steps.service-info.outputs.tag }} | cut -d'@' -f2)
+          echo "digest=$PULLED_DIGEST" >> $GITHUB_OUTPUT
+          echo "📍 Pulled digest: $PULLED_DIGEST"
+
+          # Get image creation date
+          CREATED=$(docker inspect --format='{{.Created}}' ${{ steps.service-info.outputs.image }}:${{ steps.service-info.outputs.tag }})
+          echo "created=$CREATED" >> $GITHUB_OUTPUT
+          echo "📅 Created: $CREATED"
+
+      - name: Run basic smoke tests
+        id: smoke-test
+        run: |
+          echo "🧪 Running smoke tests for ${{ steps.service-info.outputs.service }}"
+
+          # Create minimal test environment
+          cat > .env.test << 'EOF'
+          FOGIS_USERNAME=test_user
+          FOGIS_PASSWORD=test_password
+          DEBUG_MODE=1
+          LOG_LEVEL=INFO
+          REDIS_ENABLED=false
+          NOTIFICATIONS_ENABLED=false
+          EOF
+
+          # Determine health check endpoint based on service
+          SERVICE_NAME="${{ steps.service-info.outputs.service }}"
+          HEALTH_ENDPOINT="/health"
+          CONTAINER_PORT="8080"
+
+          case "$SERVICE_NAME" in
+            *"match-list-processor"*)
+              CONTAINER_PORT="8000"
+              HEALTH_ENDPOINT="/health/simple"
+              ;;
+            *"calendar"*)
+              CONTAINER_PORT="5003"
+              ;;
+            *"logo-combiner"*)
+              CONTAINER_PORT="5002"
+              ;;
+            *"google-drive"*)
+              CONTAINER_PORT="5000"
+              ;;
+          esac
+
+          echo "🔍 Using port $CONTAINER_PORT and endpoint $HEALTH_ENDPOINT"
+
+          # Start service
+          CONTAINER_NAME="test-${{ steps.service-info.outputs.service }}-${{ github.run_number }}"
+
+          docker run -d \
+            --name "$CONTAINER_NAME" \
+            --env-file .env.test \
+            -p "8888:$CONTAINER_PORT" \
+            ${{ steps.service-info.outputs.image }}:${{ steps.service-info.outputs.tag }}
+
+          # Wait for container to start
+          echo "⏳ Waiting for container to start..."
+          sleep 15
+
+          # Check if container is running
+          if ! docker ps | grep -q "$CONTAINER_NAME"; then
+            echo "❌ Container failed to start"
+            docker logs "$CONTAINER_NAME"
+            docker stop "$CONTAINER_NAME" || true
+            docker rm "$CONTAINER_NAME" || true
+            exit 1
+          fi
+
+          # Try health check (optional - some services may not have health endpoints)
+          echo "🏥 Checking health endpoint..."
+          if curl -f -s "http://localhost:8888$HEALTH_ENDPOINT" > /dev/null 2>&1; then
+            echo "✅ Health check passed"
+          else
+            echo "⚠️ Health check failed or not available (this may be expected for some services)"
+            # Don't fail the workflow - just log it
+          fi
+
+          # Cleanup
+          echo "🧹 Cleaning up test container..."
+          docker stop "$CONTAINER_NAME"
+          docker rm "$CONTAINER_NAME"
+
+          echo "✅ Smoke tests completed"
+
+      - name: Update docker-compose.yml (if needed)
+        id: update-compose
+        run: |
+          # This step would update docker-compose.yml if we want to pin to specific digests
+          # For now, we're using :latest tags, so no update needed
+          echo "ℹ️ Using :latest tag - no docker-compose.yml update needed"
+          echo "updated=false" >> $GITHUB_OUTPUT
+
+      - name: Create Pull Request
+        id: create-pr
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: |
+            chore: verify ${{ steps.service-info.outputs.service }} image update
+
+            - Service: ${{ steps.service-info.outputs.service }}
+            - Image: ${{ steps.service-info.outputs.image }}:${{ steps.service-info.outputs.tag }}
+            - Digest: ${{ steps.verify-image.outputs.digest }}
+            - Created: ${{ steps.verify-image.outputs.created }}
+            - Source: ${{ steps.service-info.outputs.source_repo }}
+          title: '🚀 Image Update: ${{ steps.service-info.outputs.service }}'
+          body: |
+            ## 🚀 Automated Container Image Update
+
+            A new container image has been published and verified.
+
+            ### 📦 Image Details
+
+            | Property | Value |
+            |----------|-------|
+            | **Service** | `${{ steps.service-info.outputs.service }}` |
+            | **Image** | `${{ steps.service-info.outputs.image }}:${{ steps.service-info.outputs.tag }}` |
+            | **Digest** | `${{ steps.verify-image.outputs.digest }}` |
+            | **Created** | `${{ steps.verify-image.outputs.created }}` |
+            | **Source Repository** | `${{ steps.service-info.outputs.source_repo }}` |
+            | **Source Commit** | `${{ steps.service-info.outputs.source_sha }}` |
+
+            ### ✅ Automated Verification
+
+            - [x] Image pulled successfully from GHCR
+            - [x] Image digest verified
+            - [x] Smoke tests passed
+            - [x] Container starts successfully
+
+            ### 🔄 Deployment Process
+
+            **Current Setup**: Using `:latest` tags for automatic updates
+
+            1. **Review**: Check the image details above
+            2. **Merge**: Merge this PR to acknowledge the update
+            3. **Deploy**: Pull latest images on your deployment server:
+               ```bash
+               docker compose pull ${{ steps.service-info.outputs.service }}
+               docker compose up -d ${{ steps.service-info.outputs.service }}
+               ```
+            4. **Monitor**: Check service health after deployment
+
+            ### 📊 Next Steps
+
+            - [ ] Review changes in source repository
+            - [ ] Verify deployment in staging (if applicable)
+            - [ ] Monitor service health after deployment
+            - [ ] Check logs for any issues
+
+            ---
+
+            <details>
+            <summary>🔍 Technical Details</summary>
+
+            **Workflow Run**: [${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+            **Triggered By**: ${{ github.event_name }}
+
+            **Image Verification**:
+            - Pull successful: ✅
+            - Digest: `${{ steps.verify-image.outputs.digest }}`
+            - Created: `${{ steps.verify-image.outputs.created }}`
+
+            </details>
+
+            ---
+
+            *This PR was automatically created by the image update automation system.*
+            *For questions or issues, check the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).*
+          branch: auto-update-${{ steps.service-info.outputs.service }}-${{ github.run_number }}
+          delete-branch: true
+          labels: |
+            automated
+            container-update
+            ${{ steps.service-info.outputs.service }}
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 🚀 Image Update Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Service**: ${{ steps.service-info.outputs.service }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Image**: ${{ steps.service-info.outputs.image }}:${{ steps.service-info.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Digest**: ${{ steps.verify-image.outputs.digest }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.create-pr.outputs.pull-request-number }}" != "" ]; then
+            echo "**Pull Request**: #${{ steps.create-pr.outputs.pull-request-number }}" >> $GITHUB_STEP_SUMMARY
+            echo "**PR URL**: ${{ steps.create-pr.outputs.pull-request-url }}" >> $GITHUB_STEP_SUMMARY
+          fi

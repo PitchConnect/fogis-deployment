@@ -1,0 +1,48 @@
+# Cloudflare Worker Configuration
+# This file configures the webhook handler worker for GitHub Container Registry notifications
+
+name = "fogis-webhook-handler"
+main = "webhook-handler.js"
+compatibility_date = "2025-01-01"
+
+# Account ID - replace with your Cloudflare account ID
+# Find it at: https://dash.cloudflare.com/ -> Workers & Pages -> Overview
+account_id = "YOUR_ACCOUNT_ID"
+
+# Workers configuration
+workers_dev = true  # Enable workers.dev subdomain for testing
+
+# Production environment configuration
+[env.production]
+name = "fogis-webhook-handler-production"
+
+# Custom domain routing
+# Replace 'yourdomain.com' with your actual domain managed by Cloudflare
+routes = [
+  { pattern = "fogis-deploy.yourdomain.com/webhook/*", zone_name = "yourdomain.com" }
+]
+
+# Environment variables (non-sensitive)
+# Sensitive values should be set using: wrangler secret put <NAME>
+[env.production.vars]
+DEPLOYMENT_REPO = "PitchConnect/fogis-deployment"
+
+# Secrets to configure (use wrangler secret put):
+# - WEBHOOK_SECRET: GitHub webhook secret
+# - GITHUB_TOKEN: GitHub Personal Access Token with repo scope
+
+# Development environment configuration
+[env.development]
+name = "fogis-webhook-handler-dev"
+workers_dev = true
+
+[env.development.vars]
+DEPLOYMENT_REPO = "PitchConnect/fogis-deployment"
+
+# Build configuration
+[build]
+command = ""  # No build step needed for this simple worker
+
+# Observability
+[observability]
+enabled = true

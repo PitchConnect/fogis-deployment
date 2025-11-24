@@ -242,7 +242,7 @@ services:
     ports:
       - "3100:3100"
     volumes:
-      - ./monitoring/loki:/loki
+      - fogis-loki-data:/loki
       - ./monitoring/loki-config.yaml:/etc/loki/local-config.yaml
     command: -config.file=/etc/loki/local-config.yaml
     networks:
@@ -357,4 +357,6 @@ volumes:
   drive-data:
   grafana-storage:
   redis-data:
+    driver: local
+  fogis-loki-data:
     driver: local

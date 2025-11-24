@@ -1,222 +1,99 @@
 # Repository Cleanup Summary
 
-## 🧹 **Comprehensive Cleanup Completed**
+## Overview
 
-**Date**: September 24, 2025
-**Context**: Pre-Redis pub/sub architecture transition cleanup
-**Scope**: Removed temporary, redundant, and obsolete files to establish clean foundation
-
-## 📊 **Cleanup Statistics**
-
-### **Files Removed**
-- **Temporary test files**: 10+ files (test_*.py, temp_*.py)
-- **Emergency/patch files**: 15+ files (emergency_*.py, patch_*.py, *_emergency*)
-- **Backup files**: 8+ files (*.backup, *-backup-*, backup directories)
-- **Obsolete documentation**: 19+ files (*_SUMMARY.md, *_GUIDE.md, analysis reports)
-- **Redundant scripts**: 40+ files (setup_*.sh, fix_*.py, validate_*.py)
-- **Development artifacts**: Multiple directories (deployment-improvements/, tools/, stacks/)
-
-### **Directories Removed**
-- `__pycache__/` - Python cache files
-- `oauth_deployment_backup/` - Obsolete OAuth backup
-- `fogis-backup-complete-20250715-163211/` - Old backup directory
-- `deployment-improvements/` - Development artifacts
-- `tools/` - Obsolete tooling
-- `stacks/` - Unused stack configurations
-- `pr_descriptions/` - Old PR templates
-- `tests/unit/`, `tests/e2e/`, `tests/integration/` - Obsolete test suites
-
-## 🎯 **Cleanup Categories**
-
-### **1. Temporary and Test Files**
-```
-Removed:
-- test_enhanced_oauth_wizard.py
-- test_wizard_basic.py
-- test_basic_functionality.py
-- test_safe_installation_system.py
-- temp_connection_manager.py
-- All __pycache__ directories
-```
-
-### **2. Emergency and Patch Files**
-```
-Removed:
-- emergency_app_simple.py
-- emergency_calendar_fix_integration.py
-- emergency_endpoints.py
-- simple_emergency_calendar_sync.py
-- oauth_monkey_patch.py
-- All patch_*.py files
-```
-
-### **3. Obsolete Documentation**
-```
-Removed:
-- ARCHITECTURE-CONSOLIDATION.md
-- CENTRALIZED-LOGGING-IMPLEMENTATION.md
-- ENHANCED_OAUTH_IMPLEMENTATION_SUMMARY.md
-- IMPLEMENTATION-SUMMARY.md
-- POST-IMPLEMENTATION-ANALYSIS.md
-- 15+ other summary/guide documents
-```
-
-### **4. Redundant Scripts and Tools**
-```
-Removed:
-- apply_deployment_fixes.sh
-- complete-oauth-setup.sh
-- fix-contacts-oauth.sh
-- setup-centralized-logging.sh
-- validate_oauth_implementation.py
-- 35+ other setup/fix/validate scripts
-```
-
-### **5. Backup and Configuration Files**
-```
-Removed:
-- docker-compose-master.yml.backup
-- docker-compose.yml.backup-v0.5.5-*
-- vikunja-config.yml
-- vikunja-docker-compose.yml
-- pytest.ini
-- requirements-dev.txt
-```
-
-## 🏗️ **Current Clean Repository Structure**
-
-### **Core Files** ✅
-```
-├── README.md                              # Main documentation
-├── docker-compose.yml                     # Service orchestration
-├── container_image_strategy.md            # Image strategy
-├── SERVICE_OWNED_IMAGES_IMPLEMENTATION_PLAN.md
-├── manage_fogis_system.sh                 # System management
-├── show_system_status.sh                  # Status monitoring
-├── install.sh                             # Installation script
-└── requirements.txt                       # Python dependencies
-```
-
-### **Configuration** ✅
-```
-├── .github/
-│   ├── dependabot.yml                     # Dependency automation
-│   └── workflows/
-│       └── dependabot-validation.yml      # PR validation
-├── credentials/                           # Authentication
-├── data/                                  # Service data
-├── monitoring/                            # Logging & monitoring
-└── templates/                             # Configuration templates
-```
-
-### **Documentation** ✅
-```
-├── docs/                                  # Technical documentation
-├── REDIS_PUBSUB_*.md                     # Redis architecture docs
-├── DEPLOYMENT_PREREQUISITES.md           # Setup requirements
-├── PRE_COMMIT_*.md                       # Development guides
-└── REPOSITORY_MAINTAINER_INSTRUCTIONS.md # Maintenance guide
-```
-
-### **Libraries and Scripts** ✅
-```
-├── lib/                                   # Reusable libraries
-│   ├── oauth_wizard.py
-│   ├── config_manager.py
-│   └── backup_manager.py
-└── scripts/                               # Utility scripts
-    ├── quick-setup.sh
-    ├── quick_health_check.sh
-    └── validate_fogis_credentials.py
-```
-
-## 🔄 **Architecture Transition Preparation**
-
-### **Redis Pub/Sub Readiness**
-- ✅ **Clean foundation**: Removed HTTP-based legacy code
-- ✅ **Updated .gitignore**: Prevents re-adding cleaned files
-- ✅ **Documentation marked**: Files marked for Redis transition updates
-- ✅ **Testing strategy**: Prepared for Redis connectivity validation
-
-### **Files Marked for Update**
-```
-⚠️ Requires Redis pub/sub updates:
-- DEPENDABOT_TESTING_STRATEGY.md
-- .github/workflows/dependabot-validation.yml
-- docker-compose.yml (service communication)
-- docs/redis_*.md (architecture documentation)
-```
-
-## 📋 **Updated .gitignore**
-
-Enhanced .gitignore to prevent re-adding cleaned file types:
-```gitignore
-# Temporary and test files
-temp_*
-test_*
-*_temp*
-*.tmp
-*.temp
-*~
-*.bak
-*.backup
-__pycache__/
-
-# Emergency and patch files
-emergency_*
-*_emergency*
-patch_*
-*_patch*
-
-# Backup directories and files
-*backup*/
-*-backup-*/
-*.backup-*
-
-# Obsolete documentation and reports
-*-analysis.md
-*_analysis_report.md
-*_implementation_summary.md
-*_troubleshooting.md
-
-# Development and testing artifacts
-deployment-improvements/
-tools/
-stacks/
-pr_descriptions/
-tests/unit/
-tests/e2e/
-tests/integration/
-```
-
-## ✅ **Cleanup Verification**
-
-### **Repository Size Reduction**
-- **Before**: ~500+ files including redundant artifacts
-- **After**: ~150 essential files for clean architecture
-- **Reduction**: ~70% file count reduction
-
-### **Maintained Functionality**
-- ✅ **Core deployment**: docker-compose.yml and management scripts
-- ✅ **Authentication**: OAuth and credential management
-- ✅ **Monitoring**: Logging and health monitoring
-- ✅ **Documentation**: Essential guides and references
-- ✅ **CI/CD**: Dependabot and validation workflows
-
-### **Ready for Redis Transition**
-- ✅ **Clean codebase**: No conflicting HTTP-based implementations
-- ✅ **Clear structure**: Organized files for easy Redis integration
-- ✅ **Updated documentation**: Marked files requiring Redis updates
-- ✅ **Enhanced .gitignore**: Prevents regression to messy state
-
-## 🎯 **Next Steps**
-
-1. **Commit cleanup changes**: Separate commit for tracking
-2. **Begin Redis pub/sub implementation**: Clean foundation ready
-3. **Update marked files**: Transition HTTP patterns to Redis messaging
-4. **Test new architecture**: Validate Redis connectivity and messaging
-5. **Update documentation**: Complete Redis architecture documentation
+This document summarizes the comprehensive cleanup of the fogis-deployment repository to remove temporary debugging artifacts and improve organization.
 
 ---
 
-**Result**: Repository is now clean, organized, and ready for Redis pub/sub architecture implementation with a solid foundation free of legacy artifacts and temporary files.
+## Files Created
+
+### 1. `cleanup-repository.sh`
+**Purpose:** Automated cleanup script with safety features
+
+**Features:**
+- Dry-run mode (default) to preview changes
+- Interactive confirmation prompts
+- Color-coded output for clarity
+- Organized file categorization
+- Automatic directory creation
+- Git staging of deleted files
+
+**Usage:**
+```bash
+./cleanup-repository.sh --dry-run    # Preview changes
+./cleanup-repository.sh --execute    # Execute with confirmation
+./cleanup-repository.sh --help       # Show help
+```
+
+### 2. `CLEANUP_GUIDE.md`
+**Purpose:** Step-by-step guide for using the cleanup script
+
+### 3. `LOKI_MIGRATION_GUIDE.md`
+**Purpose:** Guide for migrating Loki data to Docker volumes
+
+---
+
+## Cleanup Actions Summary
+
+### Files to Delete: 58 total
+
+**Python Scripts (13):** force_sync_match_6143017.py, subscriber_fix_*.py, app_with_redis_integration.py, etc.
+
+**Shell Scripts (2):** apply_subscriber_fix.sh, direct_force_sync.sh
+
+**Config Variants (6):** ci_updated.yml, pyproject_*.toml, etc.
+
+**Test Images (2):** enhanced_schema_logo_test.png, team_db_id_logo_test.png
+
+**Investigation Reports (35):** All temporary AI-generated debugging documents
+
+### Files to Move: 9 total
+
+**Diagnostic Script:** fix_calendar_sync.sh → scripts/diagnostics/calendar-sync-diagnostic.sh
+
+**Permanent Docs (8):** ARM64_IMPLEMENTATION_SUMMARY.md, CALENDAR_SERVICE_AUTHENTICATION.md, etc. → docs/
+
+### Files Requiring Manual Review: 7 files
+
+1. QUICK_REFERENCE_REDIS_INTEGRATION.md
+2. REDIS_INTEGRATION_IMPLEMENTATION_GUIDE.md
+3. REDIS_PUBSUB_VS_STREAMS_ANALYSIS.md
+4. WEBHOOK_AUTOMATION_SETUP_GUIDE.md
+5. redis_message_schema_analysis.md
+6. redis_schema_evolution_strategy.md
+7. team-logo-worker-README.md
+
+---
+
+## Execution Plan
+
+### Phase 1: Automated Cleanup ✅
+```bash
+./cleanup-repository.sh --dry-run    # Preview
+./cleanup-repository.sh --execute    # Execute
+```
+
+### Phase 2: Manual Review
+Review 7 files; move valuable ones to docs/, delete others
+
+### Phase 3: Loki Migration
+Follow LOKI_MIGRATION_GUIDE.md
+
+### Phase 4: Infrastructure Review
+Review GitHub workflows, cloudflare-worker, tests/
+
+### Phase 5: Commit
+```bash
+git add .
+git commit -m "Clean up repository: remove debug scripts, organize docs, migrate Loki"
+```
+
+---
+
+## Expected Results
+
+- **58 temporary files removed**
+- **9 files properly organized**
+- **Loki data migrated to Docker volume**
+- **Clean, maintainable repository structure**

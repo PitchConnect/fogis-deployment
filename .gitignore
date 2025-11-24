@@ -237,3 +237,19 @@ pr_descriptions/
 tests/unit/
 tests/e2e/
 tests/integration/
+
+# Loki monitoring data (now using Docker volumes)
+monitoring/loki/chunks/
+monitoring/loki/wal/
+monitoring/loki/boltdb-shipper-active/
+monitoring/loki/boltdb-shipper-cache/
+monitoring/loki/boltdb-shipper-compactor/
+
+# Test artifacts and cache
+tests/__pycache__/
+tests/**/__pycache__/
+tests/**/*.pyc
+tests/integration/test-output/
+tests/integration/test-reports/
+*.pytest_cache/
+.pytest_cache/
