@@ -37,7 +37,7 @@ jobs:
 
       - name: Validate docker-compose syntax
         run: |
-          docker-compose config --quiet
+          docker compose config --quiet
           echo "✅ Docker-compose configuration is valid"
 
       - name: Check image accessibility
@@ -82,9 +82,9 @@ jobs:
       - name: Start services with timeout
         run: |
           # Start services in background
-          timeout 300 docker-compose up -d || {
+          timeout 300 docker compose up -d || {
             echo "❌ Services failed to start within 5 minutes"
-            docker-compose logs
+            docker compose logs
             exit 1
           }
 
@@ -95,8 +95,8 @@ jobs:
           # Wait up to 5 minutes for all services to be healthy
           timeout 300 bash -c '
             while true; do
-              healthy_count=$(docker-compose ps --format json | jq -r ".Health" | grep -c "healthy" || echo "0")
-              total_services=$(docker-compose ps --format json | jq -r ".Service" | wc -l)
+              healthy_count=$(docker compose ps --format json | jq -r ".Health" | grep -c "healthy" || echo "0")
+              total_services=$(docker compose ps --format json | jq -r ".Service" | wc -l)
 
               echo "Healthy services: $healthy_count/$total_services"
 
@@ -109,8 +109,8 @@ jobs:
             done
           ' || {
             echo "❌ Not all services became healthy within timeout"
-            docker-compose ps
-            docker-compose logs
+            docker compose ps
+            docker compose logs
             exit 1
           }
 
@@ -141,7 +141,7 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          docker-compose down -v
+          docker compose down -v
           docker system prune -f
 
   # Test basic workflow functionality
@@ -168,7 +168,7 @@ jobs:
 
       - name: Start services
         run: |
-          docker-compose up -d
+          docker compose up -d
 
           # Wait for services to be ready
           sleep 60
@@ -204,7 +204,7 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          docker-compose down -v
+          docker compose down -v
           docker system prune -f
 
   # Performance regression test
@@ -228,7 +228,7 @@ jobs:
           mkdir -p credentials
           echo '{"type": "service_account", "project_id": "test"}' > credentials/google-credentials.json
 
-          docker-compose up -d
+          docker compose up -d
           sleep 60
 
       - name: Measure startup time
@@ -241,8 +241,8 @@ jobs:
           # Wait for all services to be healthy
           timeout 300 bash -c '
             while true; do
-              healthy_count=$(docker-compose ps --format json | jq -r ".Health" | grep -c "healthy" || echo "0")
-              total_services=$(docker-compose ps --format json | jq -r ".Service" | wc -l)
+              healthy_count=$(docker compose ps --format json | jq -r ".Health" | grep -c "healthy" || echo "0")
+              total_services=$(docker compose ps --format json | jq -r ".Service" | wc -l)
 
               if [ "$healthy_count" -eq "$total_services" ]; then
                 break
@@ -283,7 +283,7 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          docker-compose down -v
+          docker compose down -v
           docker system prune -f
 
   # Final validation summary
