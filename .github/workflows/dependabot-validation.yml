@@ -188,20 +188,20 @@ jobs:
         run: |
           echo "🔗 Testing inter-service connectivity..."
 
-          # Test API client health
-          curl -f http://localhost:8001/health || {
+          # Test API client health (port 9086 on host -> 8080 in container)
+          curl -f http://localhost:9086/health || {
             echo "❌ FOGIS API client health check failed"
             exit 1
           }
 
-          # Test match processor health
-          curl -f http://localhost:8000/health/simple || {
+          # Test match processor health (port 9082 on host -> 8000 in container)
+          curl -f http://localhost:9082/health/simple || {
             echo "❌ Match processor health check failed"
             exit 1
           }
 
-          # Test calendar sync health
-          curl -f http://localhost:8002/health || {
+          # Test calendar sync health (port 9083 on host -> 5003 in container)
+          curl -f http://localhost:9083/health || {
             echo "❌ Calendar sync health check failed"
             exit 1
           }
@@ -247,8 +247,8 @@ jobs:
         run: |
           echo "🧪 Testing API endpoints..."
 
-          # Test match processor status endpoint
-          response=$(curl -s http://localhost:8000/health/detailed)
+          # Test match processor status endpoint (port 9082 on host)
+          response=$(curl -s http://localhost:9082/health/detailed)
           echo "Match processor detailed health: $response"
 
           # Verify response contains expected fields
@@ -261,8 +261,8 @@ jobs:
         run: |
           echo "🔗 Testing service dependencies..."
 
-          # Check that match processor can see its dependencies
-          deps_response=$(curl -s http://localhost:8000/health/dependencies)
+          # Check that match processor can see its dependencies (port 9082 on host)
+          deps_response=$(curl -s http://localhost:9082/health/dependencies)
           echo "Dependencies health: $deps_response"
 
           # Verify all dependencies are accessible
@@ -338,8 +338,8 @@ jobs:
         run: |
           echo "🚀 Testing API response times..."
 
-          # Test match processor response time
-          response_time=$(curl -w "%{time_total}" -s -o /dev/null http://localhost:8000/health/simple)
+          # Test match processor response time (port 9082 on host)
+          response_time=$(curl -w "%{time_total}" -s -o /dev/null http://localhost:9082/health/simple)
           echo "Match processor response time: ${response_time}s"
 
           # Fail if response time > 5 seconds
