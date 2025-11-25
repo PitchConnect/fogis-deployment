@@ -292,14 +292,38 @@ jobs:
       - name: Setup and start services
         run: |
           cat > .env << EOF
+          # Test environment variables
           FOGIS_USERNAME=test_user
           FOGIS_PASSWORD=test_password
           GOOGLE_CREDENTIALS_PATH=/app/credentials/test-credentials.json
           GRAFANA_ADMIN_PASSWORD=test_admin
+          # Notification settings (required by docker-compose.yml)
+          NOTIFICATIONS_ENABLED=false
+          EMAIL_ENABLED=false
+          SMTP_HOST=smtp.example.com
+          SMTP_PORT=587
+          SMTP_USERNAME=test@example.com
+          SMTP_PASSWORD=test_password
+          SMTP_FROM=noreply@example.com
+          SMTP_USE_TLS=true
+          DISCORD_ENABLED=false
+          DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/test
+          DISCORD_BOT_USERNAME=FOGIS Bot
           EOF
 
           mkdir -p credentials
           echo '{"type": "service_account", "project_id": "test"}' > credentials/google-credentials.json
+
+          # Create data and log directories for all services
+          mkdir -p data/fogis-api-client data/process-matches-service data/fogis-calendar-phonebook-sync
+          mkdir -p data/fogis-calendar-phonebook-sync/google-calendar data/team-logo-combiner data/google-drive-service
+          mkdir -p logs/fogis-api-client logs/process-matches-service logs/fogis-calendar-phonebook-sync
+          mkdir -p logs/team-logo-combiner logs/google-drive-service
+          chmod -R 777 data logs
+
+          # Disable file logging in CI
+          export LOG_ENABLE_FILE=false
+          export LOG_ENABLE_CONSOLE=true
 
           docker compose up -d
           sleep 60
@@ -311,13 +335,17 @@ jobs:
           # Record startup times
           start_time=$(date +%s)
 
-          # Wait for all services to be healthy
+          # Wait for all services with health checks to be healthy
+          # Note: Some services (like promtail) don't have health checks and should be ignored
           timeout 300 bash -c '
             while true; do
+              # Count services that are healthy
               healthy_count=$(docker compose ps --format json | jq -r ".Health" | grep -c "healthy" || echo "0")
-              total_services=$(docker compose ps --format json | jq -r ".Service" | wc -l)
 
-              if [ "$healthy_count" -eq "$total_services" ]; then
+              # Count services that have health checks defined (not empty Health field)
+              services_with_healthcheck=$(docker compose ps --format json | jq -r "select(.Health != \"\") | .Service" | wc -l)
+
+              if [ "$healthy_count" -eq "$services_with_healthcheck" ] && [ "$services_with_healthcheck" -gt 0 ]; then
                 break
               fi
               sleep 5
