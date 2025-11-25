@@ -93,15 +93,52 @@ jobs:
           FOGIS_PASSWORD=test_password
           GOOGLE_CREDENTIALS_PATH=/app/credentials/test-credentials.json
           GRAFANA_ADMIN_PASSWORD=test_admin
+          # Notification settings (required by docker-compose.yml)
+          NOTIFICATIONS_ENABLED=false
+          EMAIL_ENABLED=false
+          SMTP_HOST=smtp.example.com
+          SMTP_PORT=587
+          SMTP_USERNAME=test@example.com
+          SMTP_PASSWORD=test_password
+          SMTP_FROM=noreply@example.com
+          SMTP_USE_TLS=true
+          DISCORD_ENABLED=false
+          DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/test
+          DISCORD_BOT_USERNAME=FOGIS Bot
           EOF
 
-      - name: Create test credentials
+      - name: Create test credentials and directories
         run: |
+          # Create credentials directory
           mkdir -p credentials
           echo '{"type": "service_account", "project_id": "test"}' > credentials/google-credentials.json
 
+          # Create data and log directories for all services
+          # This prevents permission errors when services try to write logs
+          mkdir -p data/fogis-api-client
+          mkdir -p data/process-matches-service
+          mkdir -p data/fogis-calendar-phonebook-sync
+          mkdir -p data/fogis-calendar-phonebook-sync/google-calendar
+          mkdir -p data/team-logo-combiner
+          mkdir -p data/google-drive-service
+          mkdir -p logs/fogis-api-client
+          mkdir -p logs/process-matches-service
+          mkdir -p logs/fogis-calendar-phonebook-sync
+          mkdir -p logs/team-logo-combiner
+          mkdir -p logs/google-drive-service
+
+          # Set permissions to allow containers to write
+          chmod -R 777 data logs
+
+          echo "✅ Created all required directories with proper permissions"
+
       - name: Start services with timeout
         run: |
+          # Disable file logging in CI environment to avoid permission issues
+          # Services will log to console only, which is captured by docker compose logs
+          export LOG_ENABLE_FILE=false
+          export LOG_ENABLE_CONSOLE=true
+
           # Start services in background
           timeout 300 docker compose up -d || {
             echo "❌ Services failed to start within 5 minutes"
