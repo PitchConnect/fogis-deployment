@@ -35,6 +35,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
+      - name: Create minimal .env file for validation
+        run: |
+          echo "Creating minimal .env file for docker-compose validation..."
+          cat > .env << 'EOF'
+          # Minimal .env file for CI validation
+          FOGIS_USERNAME=ci_test_user
+          FOGIS_PASSWORD=ci_test_password
+          NOTIFICATIONS_ENABLED=false
+          EMAIL_ENABLED=false
+          SMTP_HOST=smtp.example.com
+          SMTP_PORT=587
+          SMTP_USERNAME=test@example.com
+          SMTP_PASSWORD=test_password
+          SMTP_FROM=noreply@example.com
+          SMTP_USE_TLS=true
+          DISCORD_ENABLED=false
+          DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/test
+          DISCORD_BOT_USERNAME=FOGIS Bot
+          EOF
+          echo "✅ .env file created"
+
       - name: Validate docker-compose syntax
         run: |
           docker compose config --quiet
