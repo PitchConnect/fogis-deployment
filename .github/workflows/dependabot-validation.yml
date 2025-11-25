@@ -63,8 +63,8 @@ jobs:
 
       - name: Check image accessibility
         run: |
-          # Extract image names from docker-compose.yml
-          images=$(grep -E "image: ghcr.io/pitchconnect/" docker-compose.yml | awk '{print $2}')
+          # Extract image names from docker-compose.yml (excluding commented lines)
+          images=$(grep -E "^\s*image: ghcr.io/pitchconnect/" docker-compose.yml | awk '{print $2}')
 
           for image in $images; do
             echo "🔍 Checking accessibility of $image"
