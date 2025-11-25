@@ -252,7 +252,7 @@ jobs:
           echo "ℹ️ Update detection is informational only (Phase 2 will add automated testing)"
 
       - name: Upload image report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: docker-image-report
           path: image-report.md
@@ -391,7 +391,7 @@ jobs:
 
       - name: Upload security scan results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: security-scan-results
           path: |
@@ -447,7 +447,7 @@ jobs:
 
       - name: Upload test reports
         if: always() && steps.check-tests.outputs.tests_exist == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: integration-test-reports
           path: |
@@ -458,7 +458,7 @@ jobs:
 
       - name: Upload test logs on failure
         if: failure() && steps.check-tests.outputs.tests_exist == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: integration-test-logs
           path: |
