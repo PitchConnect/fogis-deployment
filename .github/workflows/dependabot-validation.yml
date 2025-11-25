@@ -150,16 +150,21 @@ jobs:
         run: |
           echo "⏳ Waiting for services to become healthy..."
 
-          # Wait up to 5 minutes for all services to be healthy
+          # Wait up to 5 minutes for all services with health checks to be healthy
+          # Note: Some services (like promtail) don't have health checks and should be ignored
           timeout 300 bash -c '
             while true; do
+              # Count services that are healthy
               healthy_count=$(docker compose ps --format json | jq -r ".Health" | grep -c "healthy" || echo "0")
-              total_services=$(docker compose ps --format json | jq -r ".Service" | wc -l)
 
-              echo "Healthy services: $healthy_count/$total_services"
+              # Count services that have health checks defined (not empty Health field)
+              # Services without health checks will have empty Health field
+              services_with_healthcheck=$(docker compose ps --format json | jq -r "select(.Health != \"\") | .Service" | wc -l)
 
-              if [ "$healthy_count" -eq "$total_services" ]; then
-                echo "✅ All services are healthy"
+              echo "Healthy services: $healthy_count/$services_with_healthcheck"
+
+              if [ "$healthy_count" -eq "$services_with_healthcheck" ] && [ "$services_with_healthcheck" -gt 0 ]; then
+                echo "✅ All services with health checks are healthy"
                 break
               fi
 
@@ -167,8 +172,15 @@ jobs:
             done
           ' || {
             echo "❌ Not all services became healthy within timeout"
+            echo ""
+            echo "Service status:"
             docker compose ps
-            docker compose logs
+            echo ""
+            echo "Services without health checks (expected to show 'Up' without 'healthy'):"
+            docker compose ps --format json | jq -r 'select(.Health == "") | .Service' || echo "None"
+            echo ""
+            echo "Recent logs:"
+            docker compose logs --tail=50
             exit 1
           }
 
